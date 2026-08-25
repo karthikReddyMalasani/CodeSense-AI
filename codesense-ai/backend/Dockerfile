@@ -1,6 +1,5 @@
 # ============================================================
 # CodeSense AI — Backend Dockerfile
-# Team Member 5 (Vishnu) — DevOps
 # ============================================================
 
 # ─── Stage 1: Build ─────────────────────────────────────────
@@ -12,20 +11,23 @@ WORKDIR /workspace
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 
-# Download dependencies (cached if pom.xml unchanged)
+# Fix Linux executable permission
+RUN chmod +x mvnw
+
+# Download dependencies
 RUN ./mvnw dependency:go-offline -B
 
 # Copy source and build
 COPY src/ src/
 RUN ./mvnw package -DskipTests -B
 
-# ─── Stage 2: Runtime ────────────────────────────────────────
+# ─── Stage 2: Runtime ───────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine
 
 LABEL maintainer="CodeSense AI Team"
 LABEL description="CodeSense AI Backend — IBM watsonx.ai + Spring Boot"
 
-# Create non-root user for security
+# Create non-root user
 RUN addgroup -S codesense && adduser -S codesense -G codesense
 
 WORKDIR /app
@@ -33,12 +35,12 @@ WORKDIR /app
 # Copy the fat JAR from builder
 COPY --from=builder /workspace/target/*.jar app.jar
 
-# Create directories for uploads (writable by app user)
+# Create upload directory
 RUN mkdir -p /app/uploads && chown -R codesense:codesense /app
 
 USER codesense
 
-# Health check
+# Container health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget -qO- http://localhost:8080/actuator/health || exit 1
 
