@@ -78,7 +78,7 @@ export default function ReadmePage() {
                 <SimpleMarkdown>{readme}</SimpleMarkdown>
               </div>
             ) : (
-              <pre style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', whiteSpace: 'pre-wrap', color: 'var(--text)' }}>
+              <pre style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', whiteSpace: 'pre-wrap', color: 'var(--cs-text-main)', background: 'var(--cs-input-bg)', border: '1px solid var(--cs-border-color)', padding: '16px', borderRadius: 'var(--cs-radius-sm)' }}>
                 {readme}
               </pre>
             )}

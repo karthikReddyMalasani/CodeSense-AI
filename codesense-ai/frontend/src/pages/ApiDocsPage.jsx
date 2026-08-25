@@ -73,7 +73,7 @@ export default function ApiDocsPage() {
                 <SimpleMarkdown>{docs}</SimpleMarkdown>
               </div>
             ) : (
-              <pre style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', whiteSpace: 'pre-wrap', color: 'var(--text)' }}>
+              <pre style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', whiteSpace: 'pre-wrap', color: 'var(--cs-text-main)', background: 'var(--cs-input-bg)', border: '1px solid var(--cs-border-color)', padding: '16px', borderRadius: 'var(--cs-radius-sm)' }}>
                 {docs}
               </pre>
             )}
