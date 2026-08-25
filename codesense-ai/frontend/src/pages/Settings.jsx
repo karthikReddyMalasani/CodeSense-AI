@@ -63,7 +63,7 @@ const Settings = () => {
         </div>
 
         {/* Backend & API Settings */}
-        <div className="settings-card">
+        {/* <div className="settings-card">
           <h3>
             <Server className="card-subicon" /> Backend API Server
           </h3>
@@ -80,7 +80,7 @@ const Settings = () => {
               If the server is unreachable, CodeAssist AI automatically switches to offline Demo Mode.
             </span>
           </div>
-        </div>
+        </div> */}
 
         {/* Editor Preferences */}
         <div className="settings-card">
