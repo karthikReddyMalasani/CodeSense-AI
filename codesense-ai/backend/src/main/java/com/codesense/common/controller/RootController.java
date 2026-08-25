@@ -16,7 +16,7 @@ public class RootController {
             "status", "UP",
             "application", "CodeSense AI REST API",
             "version", "1.0.0",
-            "frontendUrl", "http://localhost:3000"
+            "frontendUrl", "https://codesense-ai-ibm.vercel.app"
         );
         return ResponseEntity.ok(ApiResponse.success("CodeSense AI API Server is running", status));
     }
