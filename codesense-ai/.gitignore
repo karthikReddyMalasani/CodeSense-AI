@@ -1,0 +1,46 @@
+# Java / Spring Boot
+*.class
+*.jar
+*.war
+*.ear
+target/
+*.log
+*.log.*
+
+# Maven
+.mvn/timing.properties
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+*.suo
+*.user
+
+# Node / React
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Repository uploads (local dev data)
+uploads/
+repositories/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

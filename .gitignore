@@ -1,0 +1,25 @@
+# OS & IDE
+.metadata/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node / Build artifacts
+node_modules/
+build/
+dist/
+target/
+
+# Logs
+*.log
+*.log.*
+
+# Environment & Secrets
+.env
+.env.local
+.env.development.local
+
+# Local Data / Repos
+repositories/
+uploads/

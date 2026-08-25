@@ -1,0 +1,140 @@
+# ============================================================
+# CodeSense AI — Docker Compose (Production)
+# Team Member 5 (Vishnu) — DevOps
+#
+# Usage:
+#   docker compose up -d
+#
+# Environment variables must be set in .env file.
+# See .env.example for all required variables.
+# ============================================================
+
+services:
+
+  # ─── PostgreSQL + PGVector ─────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: codesense-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-codesense}
+      POSTGRES_USER: ${POSTGRES_USER:-codesense}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - codesense_pgdata:/var/lib/postgresql/data
+      - ./docker/init-extensions.sh:/docker-entrypoint-initdb.d/init-extensions.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-codesense} -d ${POSTGRES_DB:-codesense}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codesense-net
+
+  # ─── Spring Boot Backend ───────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: codesense-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-codesense}
+      DATABASE_USERNAME: ${POSTGRES_USER:-codesense}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      IBM_WATSONX_URL: ${IBM_WATSONX_URL:-https://us-south.ml.cloud.ibm.com}
+      IBM_WATSONX_API_KEY: ${IBM_WATSONX_API_KEY:-}
+      IBM_WATSONX_PROJECT_ID: ${IBM_WATSONX_PROJECT_ID:-}
+      IBM_WATSONX_MODEL_ID: ${IBM_WATSONX_MODEL_ID:-ibm/granite-13b-chat-v2}
+      AI_LLM_PROVIDER: ${AI_LLM_PROVIDER:-mock}
+      AI_EMBEDDING_PROVIDER: ${AI_EMBEDDING_PROVIDER:-mock}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-768}
+      GITHUB_ACCESS_TOKEN: ${GITHUB_ACCESS_TOKEN:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      UPLOAD_DIR: /app/uploads
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-100}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - codesense_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+    networks:
+      - codesense-net
+
+  # ─── React Frontend ────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: codesense-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - codesense-net
+
+  # ─── Prometheus ────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.54.0
+    container_name: codesense-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - codesense_prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - codesense-net
+
+  # ─── Grafana ───────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: codesense-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - codesense_grafana:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - codesense-net
+
+volumes:
+  codesense_pgdata:
+  codesense_uploads:
+  codesense_prometheus:
+  codesense_grafana:
+
+networks:
+  codesense-net:
+    driver: bridge

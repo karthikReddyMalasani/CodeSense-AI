@@ -1,0 +1,10 @@
+spring:
+  jpa:
+    show-sql: false
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    com.codesense: INFO
+    org.springframework.security: WARN
