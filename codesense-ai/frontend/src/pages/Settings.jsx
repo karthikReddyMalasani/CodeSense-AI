@@ -7,7 +7,7 @@ import { useEditor } from '../context/EditorContext';
 const Settings = () => {
   const { theme, setTheme } = useTheme();
   const { editorPreferences, setEditorPreferences } = useEditor();
-  const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080');
+  const [apiUrl, setApiUrl] = useState(import.meta.env.VITE_API_BASE_URL || 'https://codesense-ai-tuo7.onrender.com');
   const [localPrefs, setLocalPrefs] = useState(editorPreferences);
   const [saved, setSaved] = useState(false);
 
@@ -74,7 +74,7 @@ const Settings = () => {
               className="form-input"
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
-              placeholder="http://localhost:8080"
+              placeholder="https://codesense-ai-tuo7.onrender.com"
             />
             <span className="form-help">
               If the server is unreachable, CodeAssist AI automatically switches to offline Demo Mode.
