@@ -11,7 +11,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: process.env.VITE_API_BASE_URL || 'https://codesense-ai-tuo7.onrender.com',
         changeOrigin: true,
       }
     }
