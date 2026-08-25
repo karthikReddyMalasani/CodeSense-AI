@@ -11,4 +11,5 @@ public interface DocumentationRepository extends JpaRepository<Documentation, UU
     Optional<Documentation> findTopByRepositoryIdAndDocTypeOrderByCreatedAtDesc(
         UUID repositoryId, Documentation.DocType docType);
     boolean existsByRepositoryIdAndDocType(UUID repositoryId, Documentation.DocType docType);
+    void deleteByRepositoryId(UUID repositoryId);
 }

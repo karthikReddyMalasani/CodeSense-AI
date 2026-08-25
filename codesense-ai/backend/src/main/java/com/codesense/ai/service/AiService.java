@@ -113,6 +113,9 @@ public class AiService {
 
     private String generateFallbackExplanation(String code, String language, String errorMsg) {
         String langStr = (language != null && !language.isBlank()) ? language : "source";
+        String noteMsg = (errorMsg != null && !errorMsg.isBlank())
+            ? "Failed to generate AI explanation (Note: " + errorMsg + ")"
+            : "Failed to generate AI explanation (CodeSense AI Engine fallback)";
         return String.format("""
             ## Summary
             This %s code reads and extracts content from target input files/documents, handling runtime exceptions during processing.
@@ -144,7 +147,7 @@ public class AiService {
             *%s*
             """,
             langStr,
-            errorMsg != null ? "Note: " + errorMsg : "CodeSense AI Engine"
+            noteMsg
         );
     }
 

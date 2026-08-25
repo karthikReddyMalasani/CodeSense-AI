@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import com.codesense.ai.vector.RepositoryChunkRepository;
+import com.codesense.ai.model.DocumentationRepository;
+import com.codesense.ai.conversation.ConversationRepository;
 import org.springframework.util.FileSystemUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,6 +42,8 @@ public class RepositoryService {
     private final RepositoryRepo repositoryRepo;
     private final RepositoryFileRepository repositoryFileRepository;
     private final RepositoryChunkRepository repositoryChunkRepository;
+    private final DocumentationRepository documentationRepository;
+    private final ConversationRepository conversationRepository;
     private final ProjectService projectService;
     private final UserRepository userRepository;
     private final RepositoryStorageService storageService;
@@ -128,9 +132,27 @@ public class RepositoryService {
         }
 
         // 2. Delete file metadata
-        repositoryFileRepository.deleteByRepositoryId(repo.getId());
+        try {
+            repositoryFileRepository.deleteByRepositoryId(repo.getId());
+        } catch (Exception e) {
+            log.warn("Could not delete repository files for repo {}: {}", repo.getId(), e.getMessage());
+        }
 
-        // 3. Delete physical files from disk
+        // 3. Delete documentation records
+        try {
+            documentationRepository.deleteByRepositoryId(repo.getId());
+        } catch (Exception e) {
+            log.warn("Could not delete documentation for repo {}: {}", repo.getId(), e.getMessage());
+        }
+
+        // 4. Delete conversations records
+        try {
+            conversationRepository.deleteByRepositoryId(repo.getId());
+        } catch (Exception e) {
+            log.warn("Could not delete conversations for repo {}: {}", repo.getId(), e.getMessage());
+        }
+
+        // 5. Delete physical files from disk
         if (repo.getLocalPath() != null) {
             try {
                 Path path = Paths.get(repo.getLocalPath());
@@ -142,7 +164,7 @@ public class RepositoryService {
             }
         }
 
-        // 4. Delete repository record
+        // 6. Delete repository record
         repositoryRepo.delete(repo);
         log.info("Successfully deleted repository {} from project {}", repositoryId, repo.getProject().getId());
     }
@@ -298,20 +320,21 @@ public class RepositoryService {
     }
 
     private RepositoryDto toDto(Repository repo) {
+        if (repo == null) return null;
         return RepositoryDto.builder()
             .id(repo.getId())
-            .projectId(repo.getProject().getId())
+            .projectId(repo.getProject() != null ? repo.getProject().getId() : null)
             .name(repo.getName())
             .description(repo.getDescription())
-            .sourceType(repo.getSourceType().name())
+            .sourceType(repo.getSourceType() != null ? repo.getSourceType().name() : "ZIP")
             .githubUrl(repo.getGithubUrl())
-            .status(repo.getStatus().name())
-            .analysisStatus(repo.getAnalysisStatus().name())
-            .ingestionStatus(repo.getIngestionStatus().name())
+            .status(repo.getStatus() != null ? repo.getStatus().name() : "READY")
+            .analysisStatus(repo.getAnalysisStatus() != null ? repo.getAnalysisStatus().name() : "PENDING")
+            .ingestionStatus(repo.getIngestionStatus() != null ? repo.getIngestionStatus().name() : "PENDING")
             .totalFiles(repo.getTotalFiles())
             .totalChunks(repo.getTotalChunks())
-            .languages(repo.getLanguages())
-            .primaryLanguage(repo.getPrimaryLanguage())
+            .languages(repo.getLanguages() != null ? repo.getLanguages() : List.of())
+            .primaryLanguage(repo.getPrimaryLanguage() != null ? repo.getPrimaryLanguage() : "Text")
             .errorMessage(repo.getErrorMessage())
             .createdAt(repo.getCreatedAt())
             .updatedAt(repo.getUpdatedAt())

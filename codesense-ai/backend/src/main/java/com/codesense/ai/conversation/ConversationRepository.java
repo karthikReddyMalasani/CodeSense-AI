@@ -14,4 +14,5 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     List<Conversation> findByUserIdAndRepositoryIdOrderByCreatedAtDesc(UUID userId, UUID repositoryId);
     Optional<Conversation> findByIdAndUserId(UUID id, UUID userId);
     Page<Conversation> findByUserId(UUID userId, Pageable pageable);
+    void deleteByRepositoryId(UUID repositoryId);
 }

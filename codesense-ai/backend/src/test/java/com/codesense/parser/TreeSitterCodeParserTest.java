@@ -24,7 +24,7 @@ class TreeSitterCodeParserTest {
 
     @BeforeEach
     void setUp() {
-        parser = new TreeSitterCodeParser();
+        parser = new TreeSitterCodeParser(new com.codesense.parser.core.TreeSitterNativeEngine(), new com.codesense.parser.core.RegexFallbackParser());
     }
 
     @ParameterizedTest

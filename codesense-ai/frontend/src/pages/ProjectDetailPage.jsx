@@ -129,7 +129,7 @@ export default function ProjectDetailPage() {
     setDeletingRepo(true);
     setError('');
     try {
-      await repoApi.delete(deleteConfirmRepo.id);
+      await repositoryApi.delete(deleteConfirmRepo.id);
       setRepositories(prev => prev.filter(r => r.id !== deleteConfirmRepo.id));
       setDeleteConfirmRepo(null);
       setInfoMsg(`Repository "${deleteConfirmRepo.name}" removed successfully.`);
