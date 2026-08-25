@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../services/api';
 
+const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'https://codesense-ai-tuo7.onrender.com';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -51,7 +52,7 @@ export function AuthProvider({ children }) {
       return userData;
     } catch (err) {
       if (!err.response) {
-        throw new Error('Unable to connect to backend server at http://localhost:8080. Please start the backend service to save user credentials.');
+        throw new Error(`Unable to connect to backend server at ${BACKEND_URL}. Please check your network connection or ensure the backend service is running.`);
       }
       throw err;
     }
@@ -67,7 +68,7 @@ export function AuthProvider({ children }) {
       return userData;
     } catch (err) {
       if (!err.response) {
-        throw new Error('Unable to connect to backend server at http://localhost:8080. Please start the backend service to save user credentials.');
+        throw new Error(`Unable to connect to backend server at ${BACKEND_URL}. Please check your network connection or ensure the backend service is running.`);
       }
       throw err;
     }
@@ -83,7 +84,7 @@ export function AuthProvider({ children }) {
       return userData;
     } catch (err) {
       if (!err.response) {
-        throw new Error('Unable to connect to backend server at http://localhost:8080. Please start the backend service.');
+        throw new Error(`Unable to connect to backend server at ${BACKEND_URL}. Please check your network connection or ensure the backend service is running.`);
       }
       throw err;
     }
