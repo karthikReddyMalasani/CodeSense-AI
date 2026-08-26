@@ -14,6 +14,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "http://localhost:3000",
                         "http://localhost:3001",
                         "https://codesense-ai-ibm.vercel.app"
+                    "https://codesense-ai-frontend-gt2g.onrender.com"
                 )
                 .allowedMethods(
                         "GET",
