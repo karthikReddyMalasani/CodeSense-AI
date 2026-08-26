@@ -280,12 +280,32 @@ public class RepositoryService {
         }
     }
 
-    public Repository getRepositoryEntityWithOwnerCheck(String email, UUID repositoryId) {
-        Repository repo = repositoryRepo.findById(repositoryId)
-            .orElseThrow(() -> new ResourceNotFoundException("Repository", repositoryId.toString()));
-        projectService.getProjectForUser(email, repo.getProject().getId());
-        return repo;
-    }
+    // public Repository getRepositoryEntityWithOwnerCheck(String email, UUID repositoryId) {
+    //     Repository repo = repositoryRepo.findById(repositoryId)
+    //         .orElseThrow(() -> new ResourceNotFoundException("Repository", repositoryId.toString()));
+    //     projectService.getProjectForUser(email, repo.getProject().getId());
+    //     return repo;
+    // }
+
+    public Repository getRepositoryEntityWithOwnerCheck(
+        String email,
+        UUID repositoryId) {
+
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() ->
+                    new UsernameNotFoundException(
+                            "User not found: " + email
+                    ));
+
+    return repositoryRepo.findByIdAndProjectUserId(
+            repositoryId,
+            user.getId()
+    ).orElseThrow(() ->
+            new ResourceNotFoundException(
+                    "Repository",
+                    repositoryId.toString()
+            ));
+}
 
     public Repository getRepositoryEntity(UUID repositoryId) {
         return repositoryRepo.findById(repositoryId)
