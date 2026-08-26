@@ -10,6 +10,7 @@ import java.util.UUID;
 public interface RepositoryRepo extends JpaRepository<Repository, UUID> {
     List<Repository> findByProjectIdOrderByCreatedAtDesc(UUID projectId);
     Optional<Repository> findByIdAndProjectId(UUID id, UUID projectId);
+    Optional<Repository> findByIdAndProjectUserId(UUID id, UUID userId);
     long countByProjectId(UUID projectId);
     boolean existsByProjectIdAndName(UUID projectId, String name);
 }
