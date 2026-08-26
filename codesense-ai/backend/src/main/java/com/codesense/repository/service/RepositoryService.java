@@ -100,13 +100,17 @@ public class RepositoryService {
             .stream().map(this::toDto).collect(Collectors.toList());
     }
 
-    public RepositoryDto getRepository(String email, UUID repositoryId) {
-        Repository repo = repositoryRepo.findById(repositoryId)
-            .orElseThrow(() -> new ResourceNotFoundException("Repository", repositoryId.toString()));
-        projectService.getProjectForUser(email, repo.getProject().getId()); // ownership
-        return toDto(repo);
-    }
+    // public RepositoryDto getRepository(String email, UUID repositoryId) {
+    //     Repository repo = repositoryRepo.findById(repositoryId)
+    //         .orElseThrow(() -> new ResourceNotFoundException("Repository", repositoryId.toString()));
+    //     projectService.getProjectForUser(email, repo.getProject().getId()); // ownership
+    //     return toDto(repo);
+    // }
 
+    public RepositoryDto getRepository(String email, UUID repositoryId) {
+    Repository repo = getRepositoryEntityWithOwnerCheck(email, repositoryId);
+    return toDto(repo);
+}
     public List<RepositoryFileDto> getFiles(String email, UUID repositoryId) {
         Repository repo = getRepositoryEntityWithOwnerCheck(email, repositoryId);
         return repositoryFileRepository.findByRepositoryIdAndIgnoredFalse(repo.getId())
