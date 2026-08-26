@@ -108,17 +108,19 @@ export default function DashboardPage() {
       }
     } catch (err) {
       // Network error or backend totally unreachable — use mock
-      console.warn('Backend unavailable. Initializing local project workspace.', err.message);
-      const mockProject = {
-        id: 'proj-local-1',
-        name: 'Book-Summarization Workspace',
-        description: 'AI Code Analysis Project',
-        primaryLanguage: 'Python',
-        totalFiles: 12,
-        status: 'READY'
-      };
-      setProjects([mockProject]);
-      return mockProject.id;
+      // console.warn('Backend unavailable. Initializing local project workspace.', err.message);
+      // const mockProject = {
+      //   id: 'proj-local-1',
+      //   name: 'Book-Summarization Workspace',
+      //   description: 'AI Code Analysis Project',
+      //   primaryLanguage: 'Python',
+      //   totalFiles: 12,
+      //   status: 'READY'
+      // };
+      // setProjects([mockProject]);
+      // return mockProject.id;
+       console.error('Backend unavailable:', err);
+  throw err;
     }
   };
 
@@ -230,25 +232,25 @@ export default function DashboardPage() {
   };
 
   // Recent Projects mock reference fallback when backend has < 5 projects
-  const defaultRecentProjects = [
-    { id: '1', name: 'E-Commerce Platform', language: 'javascript', langColor: '#f1e05a', timeAgo: '2 days ago', files: '245 files', status: 'Completed', avatar: 'EC', bg: '#6366f1' },
-    { id: '2', name: 'User Management System', language: 'java', langColor: '#b07219', timeAgo: '1 day ago', files: '128 files', status: 'Processing', avatar: 'UM', bg: '#3b82f6' },
-    { id: '3', name: 'Blog API Service', language: 'python', langColor: '#3572A5', timeAgo: '3 days ago', files: '89 files', status: 'Completed', avatar: 'BA', bg: '#10b981' },
-    { id: '4', name: 'Mobile App Backend', language: 'typescript', langColor: '#2b7489', timeAgo: '6 hours ago', files: '156 files', status: 'Failed', avatar: 'MA', bg: '#f59e0b' },
-    { id: '5', name: 'Data Analytics Pipeline', language: 'python', langColor: '#3572A5', timeAgo: '5 days ago', files: '67 files', status: 'Completed', avatar: 'DA', bg: '#8b5cf6' }
-  ];
+  // const defaultRecentProjects = [
+  //   { id: '1', name: 'E-Commerce Platform', language: 'javascript', langColor: '#f1e05a', timeAgo: '2 days ago', files: '245 files', status: 'Completed', avatar: 'EC', bg: '#6366f1' },
+  //   { id: '2', name: 'User Management System', language: 'java', langColor: '#b07219', timeAgo: '1 day ago', files: '128 files', status: 'Processing', avatar: 'UM', bg: '#3b82f6' },
+  //   { id: '3', name: 'Blog API Service', language: 'python', langColor: '#3572A5', timeAgo: '3 days ago', files: '89 files', status: 'Completed', avatar: 'BA', bg: '#10b981' },
+  //   { id: '4', name: 'Mobile App Backend', language: 'typescript', langColor: '#2b7489', timeAgo: '6 hours ago', files: '156 files', status: 'Failed', avatar: 'MA', bg: '#f59e0b' },
+  //   { id: '5', name: 'Data Analytics Pipeline', language: 'python', langColor: '#3572A5', timeAgo: '5 days ago', files: '67 files', status: 'Completed', avatar: 'DA', bg: '#8b5cf6' }
+  // ];
 
-  const displayProjects = projects.length > 0 ? projects.map((p, idx) => ({
-    id: p.id,
-    name: p.name,
-    language: p.primaryLanguage || 'java',
-    langColor: '#3b82f6',
-    timeAgo: 'Recently',
-    files: `${p.totalFiles || p.repositoryCount || 12} files`,
-    status: p.status || 'Completed',
-    avatar: p.name.substring(0, 2).toUpperCase(),
-    bg: ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][idx % 5]
-  })) : defaultRecentProjects;
+  const displayProjects = projects.map((p, idx) => ({
+  id: p.id,
+  name: p.name,
+  language: p.primaryLanguage || 'Text',
+  langColor: '#3b82f6',
+  timeAgo: 'Recently',
+  files: `${p.totalFiles || 0} files`,
+  status: p.status || 'READY',
+  avatar: p.name.substring(0, 2).toUpperCase(),
+  bg: ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][idx % 5]
+}));
 
   return (
     <div className="cs-dashboard-container">
@@ -488,7 +490,7 @@ export default function DashboardPage() {
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Repositories</span>
-                <div className="cs-stat-val">15</div>
+                {/* <div className="cs-stat-val">15</div> */}
               </div>
               <div className="cs-stat-icon-box cs-icon-green">
                 <FileCode style={{ width: '18px', height: '18px' }} />
@@ -501,7 +503,7 @@ export default function DashboardPage() {
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Files Analyzed</span>
-                <div className="cs-stat-val">24,532</div>
+                {/* <div className="cs-stat-val">24,532</div> */}
               </div>
               <div className="cs-stat-icon-box cs-icon-purple">
                 <FileText style={{ width: '18px', height: '18px' }} />
@@ -514,7 +516,7 @@ export default function DashboardPage() {
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Lines of Code</span>
-                <div className="cs-stat-val">1.2M</div>
+                {/* <div className="cs-stat-val">1.2M</div> */}
               </div>
               <div className="cs-stat-icon-box cs-icon-orange">
                 <Code style={{ width: '18px', height: '18px' }} />
@@ -527,7 +529,7 @@ export default function DashboardPage() {
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Languages</span>
-                <div className="cs-stat-val">8</div>
+                {/* <div className="cs-stat-val">8</div> */}
               </div>
               <div className="cs-stat-icon-box cs-icon-pink">
                 <Tag style={{ width: '18px', height: '18px' }} />
@@ -540,7 +542,7 @@ export default function DashboardPage() {
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">AI Conversations</span>
-                <div className="cs-stat-val">156</div>
+                {/* <div className="cs-stat-val">156</div> */}
               </div>
               <div className="cs-stat-icon-box cs-icon-purple">
                 <MessageSquare style={{ width: '18px', height: '18px' }} />
