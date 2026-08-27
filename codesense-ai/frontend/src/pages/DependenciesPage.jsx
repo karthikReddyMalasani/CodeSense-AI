@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { repositoryApi, parserApi } from '../services/api';
+import ProjectSubNav from '../components/common/ProjectSubNav';
 
 export default function DependenciesPage() {
   const { id: projectId } = useParams();
@@ -61,6 +62,8 @@ export default function DependenciesPage() {
           </select>
         )}
       </div>
+
+      <ProjectSubNav activeTab="dependencies" />
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         {['graph', 'mermaid'].map(tab => (

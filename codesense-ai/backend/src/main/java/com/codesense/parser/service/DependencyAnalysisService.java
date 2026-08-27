@@ -37,25 +37,44 @@ public class DependencyAnalysisService {
         Set<String> nodes = new LinkedHashSet<>();
         List<DependencyEdge> edges = new ArrayList<>();
 
+        if (parsedFiles == null || parsedFiles.isEmpty()) {
+            return DependencyGraph.builder()
+                .nodes(List.of())
+                .edges(List.of())
+                .topDependencies(List.of())
+                .nodeCount(0)
+                .edgeCount(0)
+                .build();
+        }
+
         for (ParsedFile file : parsedFiles) {
+            if (file == null) continue;
             // Add file as a node
-            nodes.add(file.getFilePath());
-            graph.addVertex(file.getFilePath());
+            String filePath = file.getFilePath();
+            if (filePath != null && !filePath.isBlank()) {
+                nodes.add(filePath);
+                graph.addVertex(filePath);
+            }
 
             // Add class/module nodes
-            for (CodeElement element : file.getElements()) {
+            List<CodeElement> fileElements = file.getElements() != null ? file.getElements() : List.of();
+            for (CodeElement element : fileElements) {
+                if (element == null) continue;
                 if (isTopLevelElement(element)) {
                     String nodeName = element.getName();
+                    if (nodeName == null || nodeName.isBlank()) continue;
                     nodes.add(nodeName);
                     if (!graph.containsVertex(nodeName)) graph.addVertex(nodeName);
                 }
             }
 
             // Add relationship edges
-            for (CodeRelationship rel : file.getRelationships()) {
+            List<CodeRelationship> fileRelationships = file.getRelationships() != null ? file.getRelationships() : List.of();
+            for (CodeRelationship rel : fileRelationships) {
+                if (rel == null) continue;
                 String src = rel.getSourceElement();
                 String tgt = rel.getTargetElement();
-                if (src != null && tgt != null) {
+                if (src != null && !src.isBlank() && tgt != null && !tgt.isBlank()) {
                     if (!graph.containsVertex(src)) graph.addVertex(src);
                     if (!graph.containsVertex(tgt)) graph.addVertex(tgt);
                     try {
@@ -94,6 +113,10 @@ public class DependencyAnalysisService {
      * Generate a Mermaid diagram from the dependency graph.
      */
     public String generateMermaidDependencyDiagram(DependencyGraph graph) {
+        if (graph == null || graph.getEdges() == null || graph.getEdges().isEmpty()) {
+            return "graph LR\n";
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("graph LR\n");
 
@@ -103,6 +126,7 @@ public class DependencyAnalysisService {
 
         for (int i = 0; i < limit; i++) {
             DependencyEdge edge = graph.getEdges().get(i);
+            if (edge == null) continue;
             String src = sanitizeMermaid(edge.getSource());
             String tgt = sanitizeMermaid(edge.getTarget());
             String key = src + "-->" + tgt;

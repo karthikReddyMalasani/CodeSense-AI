@@ -34,6 +34,14 @@ class DependencyAnalysisServiceTest {
     }
 
     @Test
+    void buildDependencyGraph_nullInput_returnsEmptyGraph() {
+        DependencyAnalysisService.DependencyGraph graph = service.buildDependencyGraph(null);
+        assertThat(graph).isNotNull();
+        assertThat(graph.getNodeCount()).isZero();
+        assertThat(graph.getEdgeCount()).isZero();
+    }
+
+    @Test
     void buildDependencyGraph_withRelationships_createsEdges() {
         ParsedFile file1 = ParsedFile.builder()
             .filePath("AuthController.java")
@@ -75,6 +83,12 @@ class DependencyAnalysisServiceTest {
 
         assertThat(mermaid).startsWith("graph LR");
         assertThat(mermaid).contains("-->");
+    }
+
+    @Test
+    void generateMermaidDependencyDiagram_withNullGraph_returnsHeaderOnly() {
+        String mermaid = service.generateMermaidDependencyDiagram(null);
+        assertThat(mermaid).isEqualTo("graph LR\n");
     }
 
     @Test
