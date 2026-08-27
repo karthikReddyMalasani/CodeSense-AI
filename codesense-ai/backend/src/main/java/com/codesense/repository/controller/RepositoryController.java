@@ -88,6 +88,16 @@ public class RepositoryController {
         return ResponseEntity.ok(ApiResponse.success(file));
     }
 
+    @PutMapping("/api/repositories/{repositoryId}")
+    @Operation(summary = "Update repository name and description")
+    public ResponseEntity<ApiResponse<RepositoryDto>> updateRepository(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID repositoryId,
+            @Valid @RequestBody UpdateRepositoryRequest request) {
+        RepositoryDto repo = repositoryService.updateRepository(userDetails.getUsername(), repositoryId, request);
+        return ResponseEntity.ok(ApiResponse.success("Repository updated successfully", repo));
+    }
+
     @DeleteMapping("/api/repositories/{repositoryId}")
     @Operation(summary = "Delete a specific repository")
     public ResponseEntity<ApiResponse<Void>> deleteRepository(
