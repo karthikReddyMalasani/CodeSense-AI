@@ -25,6 +25,9 @@ FROM eclipse-temurin:21-jre-alpine
 LABEL maintainer="CodeSense AI Team"
 LABEL description="CodeSense AI Backend — Spring Boot"
 
+# Install git (needed for GitHub repository cloning)
+RUN apk add --no-cache git
+
 # Create non-root user
 RUN addgroup -S codesense && adduser -S codesense -G codesense
 
