@@ -125,6 +125,22 @@ public class RepositoryService {
     }
 
     @Transactional
+    public RepositoryDto updateRepository(String email, UUID repositoryId, UpdateRepositoryRequest request) {
+        Repository repo = getRepositoryEntityWithOwnerCheck(email, repositoryId);
+        
+        // Update name and description
+        repo.setName(request.getName());
+        if (request.getDescription() != null) {
+            repo.setDescription(request.getDescription());
+        }
+        
+        repository = repositoryRepo.save(repo);
+        log.info("Updated repository {} with new metadata", repositoryId);
+        
+        return toDto(repo);
+    }
+
+    @Transactional
     public void deleteRepository(String email, UUID repositoryId) {
         Repository repo = getRepositoryEntityWithOwnerCheck(email, repositoryId);
 
@@ -173,7 +189,7 @@ public class RepositoryService {
         log.info("Successfully deleted repository {} from project {}", repositoryId, repo.getProject().getId());
     }
 
-    // ─── Internal ────────────────────────────────────────────────────────────
+    // ─── Internal ────────────────────────────────────────────────────────
 
     @Async("ingestionTaskExecutor")
     public void extractAndIndexZipAsync(UUID repositoryId, MultipartFile file) {
