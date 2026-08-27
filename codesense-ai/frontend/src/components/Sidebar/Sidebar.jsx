@@ -17,8 +17,7 @@ import {
   GitFork,
   Settings,
   Moon,
-  Sun,
-  Zap
+  Sun
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -124,26 +123,6 @@ const Sidebar = () => {
 
       {/* Sidebar Footer Widgets */}
       <div className="cs-sidebar-footer">
-        {/* Pro Plan Box */}
-        <div className="cs-pro-card">
-          <div className="cs-pro-header">
-            <div>
-              <span className="cs-pro-label">Current Plan</span>
-              <div className="cs-pro-name">Pro</div>
-            </div>
-            <button className="cs-btn-upgrade">
-              <Zap style={{ width: '12px', height: '12px' }} />
-              Upgrade
-            </button>
-          </div>
-          <div className="cs-storage-info">
-            <span>3.2 GB / 10 GB</span>
-          </div>
-          <div className="cs-storage-bar-bg">
-            <div className="cs-storage-bar-fill" style={{ width: '32%' }} />
-          </div>
-        </div>
-
         {/* Controls */}
         <div className="cs-footer-actions">
           <button className="cs-theme-toggle" onClick={toggleTheme}>
