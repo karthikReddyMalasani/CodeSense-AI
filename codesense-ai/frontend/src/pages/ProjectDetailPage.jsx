@@ -218,6 +218,12 @@ export default function ProjectDetailPage() {
                   </button>
                   <button
                     className="btn btn-secondary btn-sm"
+                    onClick={() => navigate(`/projects/${projectId}/dependencies`, { state: { repoId: repo.id } })}
+                  >
+                    🔗 Dependency Graph
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
                     style={{ color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
                     title="Delete this repository"
                     onClick={() => setDeleteConfirmRepo(repo)}

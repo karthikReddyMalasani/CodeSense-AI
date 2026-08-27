@@ -1,28 +1,34 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { repositoryApi, parserApi } from '../services/api';
 
 export default function DependenciesPage() {
   const { id: projectId } = useParams();
+  const location = useLocation();
   const [repositories, setRepositories] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState(null);
   const [graph, setGraph] = useState(null);
   const [mermaid, setMermaid] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('graph');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     repositoryApi.list(projectId)
       .then(res => {
         const repos = res.data.data || [];
         setRepositories(repos);
-        if (repos.length > 0) setSelectedRepo(repos[0]);
+        const preSelected = location.state?.repoId
+          ? repos.find(r => r.id === location.state.repoId)
+          : repos[0];
+        if (preSelected) setSelectedRepo(preSelected);
       }).catch(() => { });
-  }, [projectId]);
+  }, [projectId, location.state]);
 
   const loadDependencies = async (repo) => {
     if (!repo) return;
     setLoading(true);
+    setError('');
     setGraph(null);
     setMermaid('');
     try {
@@ -30,8 +36,8 @@ export default function DependenciesPage() {
       const data = res.data.data || res.data;
       setGraph(data.graph || null);
       setMermaid(data.mermaid || '');
-    } catch {
-      setMermaid('graph LR\n    A[No dependency data available]\n    B[Trigger AI ingestion first]\n    A --> B');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load dependency graph for this repository.');
     }
     setLoading(false);
   };
@@ -66,9 +72,10 @@ export default function DependenciesPage() {
       </div>
 
       {loading ? (
-        <div className="loading-center"><div className="spinner" /></div>
+        <div className="loading-center"><div className="spinner" />        </div>
       ) : activeTab === 'graph' ? (
         <div>
+          {error && <div className="alert alert-error" style={{ marginBottom: '16px' }}>{error}</div>}
           {graph && (
             <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '16px' }}>
               <div className="card stat-card">
@@ -83,6 +90,12 @@ export default function DependenciesPage() {
                 <div className="stat-value">{graph.topDependencies?.length || 0}</div>
                 <div className="stat-label">Top Dependencies</div>
               </div>
+            </div>
+          )}
+          {!graph && !error && (
+            <div className="empty-state">
+              <h3>No dependency data</h3>
+              <p>No relationships were detected for this repository yet.</p>
             </div>
           )}
           {graph?.topDependencies && graph.topDependencies.length > 0 && (
@@ -124,7 +137,7 @@ export default function DependenciesPage() {
             background: 'var(--bg)', borderRadius: 'var(--radius)',
             overflowX: 'auto', maxHeight: '500px', whiteSpace: 'pre-wrap'
           }}>
-            {mermaid || 'No diagram data available.'}
+            {mermaid || (error ? 'Unable to generate Mermaid source.' : 'No diagram data available.')}
           </pre>
         </div>
       )}
