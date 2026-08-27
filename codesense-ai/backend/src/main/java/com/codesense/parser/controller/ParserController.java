@@ -62,33 +62,7 @@ public class ParserController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDependencyGraph(
             @PathVariable UUID repositoryId) {
         ParsedRepositoryDTO parsed = repositoryParserService.parseRepository(repositoryId);
-
-        // Convert ParsedFileDTOs to ParsedFiles for dependency analysis
-        List<com.codesense.parser.model.ParsedFile> parsedFiles = parsed.getFiles().stream()
-            .map(f -> com.codesense.parser.model.ParsedFile.builder()
-                .filePath(f.getFilePath())
-                .language(f.getLanguage())
-                .content(f.getContent())
-                .elements(f.getElements().stream()
-                    .map(e -> com.codesense.parser.model.CodeElement.builder()
-                        .name(e.getName())
-                        .type(mapElementType(e.getType()))
-                        .language(e.getLanguage())
-                        .filePath(e.getFilePath())
-                        .startLine(e.getStartLine())
-                        .endLine(e.getEndLine())
-                        .build())
-                    .toList())
-                .relationships(f.getRelationships().stream()
-                    .map(r -> com.codesense.parser.model.CodeRelationship.builder()
-                        .sourceElement(r.getSourceElement())
-                        .targetElement(r.getTargetElement())
-                        .type(mapRelType(r.getRelationshipType()))
-                        .sourceFile(r.getSourceFile())
-                        .build())
-                    .toList())
-                .build())
-            .toList();
+        List<com.codesense.parser.model.ParsedFile> parsedFiles = convertToModel(parsed);
 
         DependencyAnalysisService.DependencyGraph graph =
             dependencyAnalysisService.buildDependencyGraph(parsedFiles);

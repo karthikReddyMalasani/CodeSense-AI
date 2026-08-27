@@ -17,6 +17,7 @@ export default function ProjectSubNav({ activeTab }) {
         { key: 'readme', path: `/projects/${projectId}/readme`, label: '📖 Readme' },
         { key: 'api-docs', path: `/projects/${projectId}/api-docs`, label: '🔌 API Docs' },
         { key: 'architecture', path: `/projects/${projectId}/architecture`, label: '🏛️ Architecture' },
+        { key: 'dependencies', path: `/projects/${projectId}/dependencies`, label: '🔗 Dependency Graph' },
         { key: 'metrics', path: `/projects/${projectId}/metrics`, label: '📈 Metrics' },
         { key: 'quality', path: `/projects/${projectId}/quality`, label: '📊 Quality Dashboard', primary: true }
     ];
