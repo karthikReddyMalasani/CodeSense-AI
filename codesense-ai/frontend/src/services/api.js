@@ -73,6 +73,7 @@ export const repoApi = {
   files: (repositoryId) => api.get(`/api/repositories/${repositoryId}/files`),
   getFile: (repositoryId, fileId) => api.get(`/api/repositories/${repositoryId}/files/${fileId}`),
   file: (repositoryId, fileId) => api.get(`/api/repositories/${repositoryId}/files/${fileId}`),
+  update: (repositoryId, data) => api.put(`/api/repositories/${repositoryId}`, data),
   delete: (repositoryId) => api.delete(`/api/repositories/${repositoryId}`),
   deleteRepository: (repositoryId) => api.delete(`/api/repositories/${repositoryId}`)
 };

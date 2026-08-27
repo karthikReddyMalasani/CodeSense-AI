@@ -11,9 +11,12 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [showGitHub, setShowGitHub] = useState(false);
+  const [showEditRepo, setShowEditRepo] = useState(false);
   const [uploadForm, setUploadForm] = useState({ name: '', file: null });
   const [githubForm, setGithubForm] = useState({ githubUrl: '', name: '', branch: '' });
+  const [editForm, setEditForm] = useState({ id: '', name: '', description: '' });
   const [uploading, setUploading] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
 
   const [infoMsg, setInfoMsg] = useState('');
@@ -99,6 +102,35 @@ export default function ProjectDetailPage() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleEditRepo = async (e) => {
+    e.preventDefault();
+    if (!editForm.name) { setError('Repository name is required'); return; }
+    setEditing(true); setError(''); setInfoMsg('');
+    try {
+      const res = await repositoryApi.update(editForm.id, {
+        name: editForm.name,
+        description: editForm.description
+      });
+      setRepositories(prev => prev.map(r => r.id === editForm.id ? res.data.data : r));
+      setShowEditRepo(false);
+      setEditForm({ id: '', name: '', description: '' });
+      setInfoMsg('Repository updated successfully!');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update repository');
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const openEditModal = (repo) => {
+    setEditForm({
+      id: repo.id,
+      name: repo.name,
+      description: repo.description || ''
+    });
+    setShowEditRepo(true);
   };
 
   const triggerIngestion = async (repoId) => {
@@ -224,6 +256,13 @@ export default function ProjectDetailPage() {
                   </button>
                   <button
                     className="btn btn-secondary btn-sm"
+                    title="Edit repository name and description"
+                    onClick={() => openEditModal(repo)}
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
                     style={{ color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
                     title="Delete this repository"
                     onClick={() => setDeleteConfirmRepo(repo)}
@@ -303,6 +342,35 @@ export default function ProjectDetailPage() {
                 <button type="button" className="btn btn-secondary" onClick={() => setShowGitHub(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={uploading}>
                   {uploading ? <span className="spinner" /> : 'Import'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Repository Modal */}
+      {showEditRepo && (
+        <div className="modal-backdrop" onClick={() => setShowEditRepo(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">✏️ Edit Repository</div>
+            {error && <div className="alert alert-error">{error}</div>}
+            <form onSubmit={handleEditRepo}>
+              <div className="form-group">
+                <label className="label">Repository Name *</label>
+                <input className="input" placeholder="my-repo"
+                  value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="label">Description</label>
+                <textarea className="input" placeholder="Optional description"
+                  value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                  style={{ minHeight: '80px' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditRepo(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={editing}>
+                  {editing ? <span className="spinner" /> : 'Save Changes'}
                 </button>
               </div>
             </form>
