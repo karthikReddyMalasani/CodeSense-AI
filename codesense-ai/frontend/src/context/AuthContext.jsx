@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
       return userData;
     } catch (err) {
       if (!err.response) {
-        throw new Error(`Unable to connect to backend server at ${BACKEND_URL}. Please check your network connection or ensure the backend service is running.`);
+        throw new Error('Service is temporarily waking up. The CodeSense AI service is currently starting up after a period of inactivity. Please wait a few moments and try again. We appreciate your patience.');
       }
       throw err;
     }
