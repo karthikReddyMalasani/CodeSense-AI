@@ -1,0 +1,242 @@
+.project-tree-explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary, #1e1e1e);
+  color: var(--text-primary, #e0e0e0);
+  overflow: hidden;
+}
+
+.tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #333);
+  background: var(--bg-tertiary, #252526);
+}
+
+.tree-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tree-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--accent-color, #007acc);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tree-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+}
+
+.tree-loading,
+.tree-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary, #888);
+  font-size: 13px;
+}
+
+.tree-loading-inline,
+.tree-empty-inline {
+  padding: 8px 16px 8px 40px;
+  color: var(--text-secondary, #888);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Tree Node Styling */
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tree-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #888);
+  transition: color 0.2s ease;
+}
+
+.tree-toggle-btn:hover {
+  color: var(--text-primary, #e0e0e0);
+}
+
+.tree-item-spacer {
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.tree-item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  font-size: 12px;
+}
+
+.tree-item-count {
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.tree-status-icon {
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.tree-status-icon.ready {
+  color: #4ec9b0;
+}
+
+/* Project Item */
+.tree-project-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tree-project-item:hover {
+  background-color: var(--bg-hover, #2d2d30);
+}
+
+.tree-project-icon {
+  color: var(--accent-color, #007acc);
+  flex-shrink: 0;
+}
+
+.tree-project-contents {
+  padding-left: 8px;
+  border-left: 1px solid var(--border-color, #333);
+  margin-left: 10px;
+}
+
+/* Repository Item */
+.tree-repository-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  margin-left: 12px;
+}
+
+.tree-repository-item:hover {
+  background-color: var(--bg-hover, #2d2d30);
+}
+
+.tree-repository-contents {
+  padding-left: 8px;
+  border-left: 1px solid var(--border-color, #333);
+  margin-left: 22px;
+}
+
+/* Folder Item */
+.tree-folder-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  margin-left: 12px;
+}
+
+.tree-folder-item:hover {
+  background-color: var(--bg-hover, #2d2d30);
+}
+
+.tree-folder-contents {
+  padding-left: 8px;
+  border-left: 1px solid var(--border-color, #333);
+  margin-left: 22px;
+}
+
+/* File Item */
+.tree-file-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  margin-left: 12px;
+}
+
+.tree-file-item:hover {
+  background-color: var(--bg-hover, #2d2d30);
+}
+
+.tree-file-icon {
+  flex-shrink: 0;
+}
+
+.tree-file-icon.code {
+  color: #4ec9b0;
+}
+
+.tree-file-icon.json {
+  color: #d4d4d4;
+}
+
+.tree-file-icon.archive {
+  color: #ce9178;
+}
+
+.tree-file-icon.doc {
+  color: #858585;
+}
+
+/* Scrollbar Styling */
+.tree-container::-webkit-scrollbar {
+  width: 12px;
+}
+
+.tree-container::-webkit-scrollbar-track {
+  background: var(--bg-secondary, #1e1e1e);
+}
+
+.tree-container::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, #464647);
+  border-radius: 6px;
+}
+
+.tree-container::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, #5a5a5a);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tree-title {
+    font-size: 12px;
+  }
+
+  .tree-item-name {
+    font-size: 11px;
+  }
+
+  .tree-item-count {
+    font-size: 10px;
+  }
+}

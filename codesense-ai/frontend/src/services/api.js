@@ -45,6 +45,7 @@ export const authApi = {
   login: (data) => api.post('/api/auth/login', data),
   register: (data) => api.post('/api/auth/register', data),
   socialLogin: (data) => api.post('/api/auth/social-login', data),
+  legacyLogin: (data) => api.post('/api/auth/legacy-login', data),
   getMe: () => api.get('/api/auth/me')
 };
 

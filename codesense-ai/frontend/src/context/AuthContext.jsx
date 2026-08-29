@@ -97,9 +97,57 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) throw error;
-    return exchangeSession(data.session);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw error;
+      return exchangeSession(data.session);
+    } catch (supabaseError) {
+      // If Supabase login fails, try verifying legacy account
+      console.warn('Supabase login failed, attempting legacy account verification:', supabaseError.message);
+      try {
+        const legacyResponse = await authApi.legacyLogin({
+          email: email.trim(),
+          password
+        });
+        
+        const legacyData = legacyResponse.data.data;
+        
+        // Legacy account found - now create Supabase account with same credentials
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: legacyData.email,
+          password,
+          options: {
+            data: { name: legacyData.name },
+            autoConfirm: true // Auto-confirm since they're an existing user
+          }
+        });
+        
+        if (signUpError) {
+          // If account already exists in Supabase, try signing in
+          if (signUpError.message?.includes('already registered')) {
+            const { data, error } = await supabase.auth.signInWithPassword({ 
+              email: legacyData.email, 
+              password 
+            });
+            if (error) throw error;
+            return exchangeSession(data.session);
+          }
+          throw signUpError;
+        }
+        
+        if (!signUpData.session) {
+          throw new Error('Account created but session not established. Please log in again.');
+        }
+        
+        return exchangeSession(signUpData.session, legacyData.name);
+      } catch (legacyError) {
+        // If legacy verification also fails, throw the original Supabase error
+        if (legacyError.response?.status === 404 || legacyError.message?.includes('not found')) {
+          throw new Error('Invalid credentials. Please check your email and password.');
+        }
+        throw legacyError;
+      }
+    }
   };
 
   const register = async (name, email, password) => {

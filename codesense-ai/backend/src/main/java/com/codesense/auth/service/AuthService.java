@@ -104,6 +104,34 @@ public class AuthService implements UserDetailsService {
             .build();
     }
 
+    /**
+     * Verify legacy account credentials and return migration info.
+     * This allows old accounts to be migrated to Supabase on first login.
+     */
+    public LegacyMigrationResponse verifyLegacyCredentials(LoginRequest request) {
+        String normalizedEmail = request.getEmail().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+            .orElse(null);
+
+        if (user == null) {
+            log.warn("Legacy login attempt for non-existent user: {}", normalizedEmail);
+            throw new UsernameNotFoundException("Account not found in the system");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            log.warn("Legacy login failed - invalid password for: {}", normalizedEmail);
+            throw new BadRequestException("Invalid credentials");
+        }
+
+        log.info("Legacy credentials verified for: {}", normalizedEmail);
+        return LegacyMigrationResponse.builder()
+            .email(user.getEmail())
+            .name(user.getName())
+            .message("Please use this account to sign in with Supabase. We're migrating your account.")
+            .requiresSupabaseCreation(true)
+            .build();
+    }
+
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return userRepository.findByEmail(email)

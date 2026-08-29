@@ -43,6 +43,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Social login successful", response));
     }
 
+    @PostMapping("/legacy-login")
+    @Operation(summary = "Verify legacy account credentials for migration to Supabase")
+    public ResponseEntity<ApiResponse<LegacyMigrationResponse>> legacyLogin(@Valid @RequestBody LoginRequest request) {
+        LegacyMigrationResponse response = authService.verifyLegacyCredentials(request);
+        return ResponseEntity.ok(ApiResponse.success("Legacy account verified. Create a Supabase account with the same credentials.", response));
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Get current user profile")
     public ResponseEntity<ApiResponse<UserProfileDto>> getProfile(
