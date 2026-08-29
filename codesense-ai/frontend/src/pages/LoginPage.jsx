@@ -45,7 +45,17 @@ export default function LoginPage() {
       navigate('/dashboard');
     } catch (err) {
       const data = err.response?.data;
-      const msg = data?.fieldErrors?.[0]?.message || data?.message || err.message || 'Invalid credentials. Please try again.';
+      let msg = data?.fieldErrors?.[0]?.message || data?.message || err.message || 'Invalid credentials. Please try again.';
+      
+      // Improve error messages for better UX
+      if (msg.includes('Email verification')) {
+        msg = 'Please verify your email address first. Check your inbox for the verification link.';
+      } else if (msg.includes('session not established')) {
+        msg = 'Account created but verification needed. Please check your email and try again.';
+      } else if (msg.includes('Invalid credentials')) {
+        msg = 'Email or password is incorrect. Please try again.';
+      }
+      
       setGlobalError(msg);
     } finally {
       setLoading(false);
@@ -81,7 +91,18 @@ export default function LoginPage() {
       await sendMagicLink(form.email);
       setEmailSent(true);
     } catch (err) {
-      setGlobalError(err.message || 'Unable to send the verification email. Please try again.');
+      // Provide helpful error messages for different cases
+      let errorMsg = err.message || 'Unable to send the verification email. Please try again.';
+      
+      if (errorMsg.includes('Over request rate limit')) {
+        errorMsg = 'Too many requests. Please wait a few minutes before trying again.';
+      } else if (errorMsg.includes('sending magic link email') || errorMsg.includes('email service')) {
+        errorMsg = 'Email service is currently unavailable. Please try again later or use password login.';
+      } else if (errorMsg.includes('User not found')) {
+        errorMsg = 'No account found with this email address. Please sign up first.';
+      }
+      
+      setGlobalError(errorMsg);
     } finally {
       setLoading(false);
     }
