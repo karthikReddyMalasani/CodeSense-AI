@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -70,6 +69,44 @@ class DependencyAnalysisServiceTest {
     }
 
     @Test
+    void buildDependencyGraph_relationshipNodes_areIncludedInNodesList() {
+        ParsedFile file = ParsedFile.builder()
+            .filePath("AuthController.java")
+            .language("Java")
+            .relationships(List.of(
+                CodeRelationship.builder()
+                    .sourceElement("AuthController")
+                    .targetElement("AuthService")
+                    .type(CodeRelationship.RelationshipType.CALLS)
+                    .sourceFile("AuthController.java").build()
+            ))
+            .build();
+
+        DependencyAnalysisService.DependencyGraph graph = service.buildDependencyGraph(List.of(file));
+
+        assertThat(graph.getNodes()).contains("AuthController", "AuthService");
+    }
+
+    @Test
+    void buildDependencyGraph_duplicateRelationships_areDeduplicated() {
+        ParsedFile file = ParsedFile.builder()
+            .filePath("AuthController.java")
+            .language("Java")
+            .relationships(List.of(
+                CodeRelationship.builder().sourceElement("A").targetElement("B")
+                    .type(CodeRelationship.RelationshipType.CALLS).build(),
+                CodeRelationship.builder().sourceElement("A").targetElement("B")
+                    .type(CodeRelationship.RelationshipType.CALLS).build()
+            ))
+            .build();
+
+        DependencyAnalysisService.DependencyGraph graph = service.buildDependencyGraph(List.of(file));
+
+        assertThat(graph.getEdgeCount()).isEqualTo(1);
+        assertThat(graph.getEdges()).hasSize(1);
+    }
+
+    @Test
     void generateMermaidDependencyDiagram_returnsValidMermaid() {
         DependencyAnalysisService.DependencyGraph graph = DependencyAnalysisService.DependencyGraph.builder()
             .nodes(List.of("A", "B", "C"))
@@ -109,5 +146,11 @@ class DependencyAnalysisServiceTest {
 
         assertThat(diagram).contains("classDiagram");
         assertThat(diagram).contains("User");
+    }
+
+    @Test
+    void generateMermaidClassDiagram_withNullInput_returnsHeaderOnly() {
+        String diagram = service.generateMermaidClassDiagram(null);
+        assertThat(diagram).isEqualTo("classDiagram\n");
     }
 }

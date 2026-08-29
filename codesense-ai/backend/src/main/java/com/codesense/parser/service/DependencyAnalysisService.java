@@ -75,15 +75,21 @@ public class DependencyAnalysisService {
                 String src = rel.getSourceElement();
                 String tgt = rel.getTargetElement();
                 if (src != null && !src.isBlank() && tgt != null && !tgt.isBlank()) {
+                    nodes.add(src);
+                    nodes.add(tgt);
                     if (!graph.containsVertex(src)) graph.addVertex(src);
                     if (!graph.containsVertex(tgt)) graph.addVertex(tgt);
                     try {
-                        graph.addEdge(src, tgt);
-                    } catch (Exception ignored) {}
-                    edges.add(DependencyEdge.builder()
-                        .source(src).target(tgt)
-                        .type(rel.getType() != null ? rel.getType().name() : "DEPENDS_ON")
-                        .build());
+                        DefaultEdge added = graph.addEdge(src, tgt);
+                        if (added != null) {
+                            edges.add(DependencyEdge.builder()
+                                .source(src).target(tgt)
+                                .type(rel.getType() != null ? rel.getType().name() : "DEPENDS_ON")
+                                .build());
+                        }
+                    } catch (IllegalArgumentException ex) {
+                        log.debug("Skipping invalid dependency edge {} -> {}: {}", src, tgt, ex.getMessage());
+                    }
                 }
             }
         }
@@ -159,17 +165,28 @@ public class DependencyAnalysisService {
         StringBuilder sb = new StringBuilder();
         sb.append("classDiagram\n");
 
+        if (parsedFiles == null || parsedFiles.isEmpty()) {
+            return sb.toString();
+        }
+
         for (ParsedFile file : parsedFiles) {
-            List<CodeElement> classes = file.getElements().stream()
+            if (file == null) continue;
+            List<CodeElement> fileElements = file.getElements() != null ? file.getElements() : List.of();
+            List<CodeRelationship> fileRelationships = file.getRelationships() != null ? file.getRelationships() : List.of();
+
+            List<CodeElement> classes = fileElements.stream()
                 .filter(e -> e.getType() == CodeElement.ElementType.CLASS
                           || e.getType() == CodeElement.ElementType.INTERFACE
                           || e.getType() == CodeElement.ElementType.ENUM)
                 .collect(Collectors.toList());
 
             for (CodeElement cls : classes) {
+                if (cls.getName() == null || cls.getName().isBlank()) {
+                    continue;
+                }
                 sb.append("    class ").append(sanitizeMermaid(cls.getName())).append(" {\n");
                 // Add methods
-                file.getElements().stream()
+                fileElements.stream()
                     .filter(e -> cls.getName().equals(e.getParentName())
                              && (e.getType() == CodeElement.ElementType.METHOD
                                  || e.getType() == CodeElement.ElementType.CONSTRUCTOR))
@@ -182,7 +199,7 @@ public class DependencyAnalysisService {
             }
 
             // Add inheritance relationships
-            for (CodeRelationship rel : file.getRelationships()) {
+            for (CodeRelationship rel : fileRelationships) {
                 if (rel.getType() == CodeRelationship.RelationshipType.EXTENDS) {
                     sb.append("    ").append(sanitizeMermaid(rel.getSourceElement()))
                       .append(" --|> ").append(sanitizeMermaid(rel.getTargetElement())).append("\n");
