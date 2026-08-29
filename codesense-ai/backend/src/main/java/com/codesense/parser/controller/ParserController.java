@@ -60,13 +60,14 @@ public class ParserController {
     @PostMapping("/repositories/{repositoryId}/dependency-graph")
     @Operation(summary = "Generate dependency graph from parsed repository")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDependencyGraph(
-            @PathVariable UUID repositoryId) {
+            @PathVariable UUID repositoryId,
+            @RequestParam(value = "direction", required = false) String direction) {
         ParsedRepositoryDTO parsed = repositoryParserService.parseRepository(repositoryId);
         List<com.codesense.parser.model.ParsedFile> parsedFiles = convertToModel(parsed);
 
         DependencyAnalysisService.DependencyGraph graph =
             dependencyAnalysisService.buildDependencyGraph(parsedFiles);
-        String mermaid = dependencyAnalysisService.generateMermaidDependencyDiagram(graph);
+        String mermaid = dependencyAnalysisService.generateMermaidDependencyDiagram(graph, direction);
 
         return ResponseEntity.ok(ApiResponse.success(Map.of(
             "graph", graph,
