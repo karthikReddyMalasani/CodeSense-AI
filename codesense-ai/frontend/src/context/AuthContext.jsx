@@ -1,10 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { authApi } from '../services/api';
 import { supabase } from '../services/supabase';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate();
+  const exchangeInProgress = useRef(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
@@ -13,6 +16,17 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     const loadProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && !localStorage.getItem('token')) {
+        try {
+          await exchangeSession(session);
+          if (mounted) navigate('/dashboard', { replace: true });
+        } catch (error) {
+          if (mounted) setLoading(false);
+          console.error('Unable to create the CodeSense session:', error);
+        }
+        return;
+      }
       if (!token) {
         if (mounted) setLoading(false);
         return;
@@ -42,7 +56,9 @@ export function AuthProvider({ children }) {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !localStorage.getItem('token')) {
         setLoading(true);
         const provider = session.user.app_metadata?.provider;
-        exchangeSession(session, undefined, provider === 'google' || provider === 'github').catch((error) => {
+        exchangeSession(session, undefined, provider === 'google' || provider === 'github').then(() => {
+          if (mounted) navigate('/dashboard', { replace: true });
+        }).catch((error) => {
           if (mounted) setLoading(false);
           console.error('Unable to create the CodeSense session:', error);
         });
@@ -53,25 +69,31 @@ export function AuthProvider({ children }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [token]);
+  }, [token, navigate]);
 
   // Supabase verifies credentials; the exchange returns the app API token.
   const exchangeSession = async (session, name, requireVerifiedEmail = false) => {
+    if (exchangeInProgress.current) return user;
     if (!session?.user?.email) throw new Error('Supabase did not return an email for this account.');
     if (requireVerifiedEmail && !session.user.email_confirmed_at && !session.user.confirmed_at) {
       await supabase.auth.signOut();
       throw new Error('Your Google or GitHub email could not be verified. Please use a verified provider account.');
     }
-    const res = await authApi.socialLogin({
-      provider: 'supabase',
-      email: session.user.email,
-      name: name || session.user.user_metadata?.name || session.user.email.split('@')[0]
-    });
-    const { token: newToken, ...userData } = res.data.data;
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
-    setUser(userData);
-    return userData;
+    exchangeInProgress.current = true;
+    try {
+      const res = await authApi.socialLogin({
+        provider: 'supabase',
+        email: session.user.email,
+        name: name || session.user.user_metadata?.name || session.user.email.split('@')[0]
+      });
+      const { token: newToken, ...userData } = res.data.data;
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+      setUser(userData);
+      return userData;
+    } finally {
+      exchangeInProgress.current = false;
+    }
   };
 
   const login = async (email, password) => {
@@ -94,7 +116,7 @@ export function AuthProvider({ children }) {
   const sendMagicLink = async (email) => {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/login` }
+      options: { emailRedirectTo: `${window.location.origin}/dashboard` }
     });
     if (error) throw error;
   };
