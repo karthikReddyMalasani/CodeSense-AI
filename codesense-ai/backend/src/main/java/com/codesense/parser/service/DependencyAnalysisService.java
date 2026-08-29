@@ -113,12 +113,25 @@ public class DependencyAnalysisService {
      * Generate a Mermaid diagram from the dependency graph.
      */
     public String generateMermaidDependencyDiagram(DependencyGraph graph) {
+        return generateMermaidDependencyDiagram(graph, "LR");
+    }
+
+    /**
+     * Generate a Mermaid diagram from the dependency graph using the provided direction.
+     * Supported directions: LR (left->right), TB (top->bottom), RL (right->left), BT (bottom->top)
+     */
+    public String generateMermaidDependencyDiagram(DependencyGraph graph, String direction) {
+        String dir = (direction == null || direction.isBlank()) ? "LR" : direction.toUpperCase();
+        if (!Set.of("LR", "TB", "RL", "BT").contains(dir)) {
+            dir = "LR"; // fallback
+        }
+
         if (graph == null || graph.getEdges() == null || graph.getEdges().isEmpty()) {
-            return "graph LR\n";
+            return "graph " + dir + "\n";
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("graph LR\n");
+        sb.append("graph ").append(dir).append("\n");
 
         // Limit to 50 edges for readability
         int limit = Math.min(graph.getEdges().size(), 50);
@@ -196,7 +209,7 @@ public class DependencyAnalysisService {
         return name.replaceAll("[^A-Za-z0-9_]", "_");
     }
 
-    // ─── DTOs ────────────────────────────────────────────────────────────────
+    // ─── DTOs ─────────────────────────────────────────────────────────
 
     @lombok.Data
     @lombok.Builder
