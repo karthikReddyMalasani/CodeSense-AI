@@ -129,7 +129,11 @@ export const aiApi = {
 export const parserApi = {
   parseRepository: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/parse`),
   getMetrics: (repositoryId) => api.get(`/api/parser/repositories/${repositoryId}/metrics`),
-  getDependencyGraph: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/dependency-graph`),
+  // direction optional query param
+  getDependencyGraph: (repositoryId, direction) => {
+    const url = direction ? `/api/parser/repositories/${repositoryId}/dependency-graph?direction=${encodeURIComponent(direction)}` : `/api/parser/repositories/${repositoryId}/dependency-graph`;
+    return api.post(url);
+  },
   getUmlDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/uml`),
   getArchitectureDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture`)
 };
