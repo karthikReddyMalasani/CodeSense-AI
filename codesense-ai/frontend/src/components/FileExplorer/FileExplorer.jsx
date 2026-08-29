@@ -16,7 +16,7 @@ import {
   FilePlus,
   FolderGit2,
   FileArchive,
-  TreeIcon
+  Layers
 } from 'lucide-react';
 import './FileExplorer.css';
 
@@ -69,7 +69,7 @@ const FileExplorer = () => {
             title="Toggle Projects Tree View" 
             onClick={() => setViewMode(viewMode === 'projects' ? 'current' : 'projects')}
           >
-            <TreeIcon className="action-icon" />
+            <Layers className="action-icon" />
           </button>
           <button className="icon-action-btn" title="New File" onClick={() => setShowNewFileInput(true)}>
             <FilePlus className="action-icon" />
