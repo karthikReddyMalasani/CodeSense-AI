@@ -1,6 +1,6 @@
 /**
  * SimpleMarkdown - lightweight markdown renderer with no external dependencies.
- * Supports: headings, bold, italic, inline code, code blocks, lists, blockquotes, horizontal rules.
+ * Supports: headings, bold, italic, inline code, code blocks, lists, blockquotes, tables, horizontal rules.
  */
 export default function SimpleMarkdown({ children }) {
   if (!children) return null;
@@ -30,6 +30,62 @@ export default function SimpleMarkdown({ children }) {
         </pre>
       );
       i++;
+      continue;
+    }
+
+    // Tables (markdown format: | col | col |)
+    if (line.includes('|') && i + 1 < lines.length && lines[i + 1].includes('|') && lines[i + 1].match(/^\|[\s\-:|]+\|$/)) {
+      const headerLine = line.split('|').filter(cell => cell.trim()).map(cell => cell.trim());
+      const alignLine = lines[i + 1].split('|').filter(cell => cell.trim());
+      const rows = [];
+      
+      i += 2; // Skip header and align line
+      while (i < lines.length && lines[i].includes('|')) {
+        const cells = lines[i].split('|').filter(cell => cell.trim()).map(cell => cell.trim());
+        if (cells.length > 0) rows.push(cells);
+        i++;
+      }
+
+      const getAlign = (alignStr) => {
+        if (alignStr.startsWith(':') && alignStr.endsWith(':')) return 'center';
+        if (alignStr.endsWith(':')) return 'right';
+        if (alignStr.startsWith(':')) return 'left';
+        return 'left';
+      };
+
+      elements.push(
+        <table key={i} style={{
+          width: '100%', borderCollapse: 'collapse', margin: '12px 0',
+          border: '1px solid var(--border, #333)', borderRadius: '6px', overflow: 'hidden'
+        }}>
+          <thead>
+            <tr style={{ background: 'rgba(59, 130, 246, 0.08)', borderBottom: '2px solid var(--border, #333)' }}>
+              {headerLine.map((header, idx) => (
+                <th key={idx} style={{
+                  padding: '10px 12px', textAlign: getAlign(alignLine[idx]), fontWeight: '600',
+                  color: 'var(--text, #cdd6f4)', borderRight: idx < headerLine.length - 1 ? '1px solid var(--border, #333)' : 'none'
+                }}>
+                  {renderInline(header)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIdx) => (
+              <tr key={rowIdx} style={{ borderBottom: '1px solid var(--border, #333)' }}>
+                {row.map((cell, cellIdx) => (
+                  <td key={cellIdx} style={{
+                    padding: '10px 12px', textAlign: getAlign(alignLine[cellIdx]),
+                    color: 'var(--text, #cdd6f4)', borderRight: cellIdx < row.length - 1 ? '1px solid var(--border, #333)' : 'none'
+                  }}>
+                    {renderInline(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
       continue;
     }
 

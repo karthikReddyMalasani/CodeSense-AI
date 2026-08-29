@@ -1995,27 +1995,35 @@ pre {
 .markdown table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 0.75em;
+  margin: 16px 0;
   font-size: 13px;
+  background: var(--cs-input-bg);
+  border: 1px solid var(--cs-border-color);
+  border-radius: var(--cs-radius-sm);
+  overflow: hidden;
 }
 
 .markdown th {
-  background: var(--cs-btn-secondary-bg);
+  background: rgba(99, 102, 241, 0.08);
   color: var(--cs-text-main);
   font-weight: 700;
-  padding: 8px 12px;
-  border: 1px solid var(--cs-border-color);
+  padding: 12px 14px;
+  border-bottom: 2px solid var(--cs-border-color);
   text-align: left;
 }
 
 .markdown td {
-  padding: 8px 12px;
-  border: 1px solid var(--cs-border-color);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--cs-border-color);
   color: var(--cs-text-main);
 }
 
+.markdown tr:last-child td {
+  border-bottom: none;
+}
+
 .markdown tr:nth-child(even) td {
-  background: var(--cs-input-bg);
+  background: rgba(59, 130, 246, 0.02);
 }
 
 .markdown a {

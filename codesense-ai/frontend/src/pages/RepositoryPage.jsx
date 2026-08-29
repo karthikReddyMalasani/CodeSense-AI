@@ -98,6 +98,72 @@ export default function RepositoryPage() {
     return map[lang] || '#94a3b8';
   };
 
+  // Build hierarchical folder structure
+  const buildFolderTree = (files) => {
+    const tree = {};
+    files.forEach(file => {
+      const parts = file.filePath.split('/');
+      let current = tree;
+      parts.forEach((part, idx) => {
+        if (idx === parts.length - 1) {
+          // File
+          if (!current._files) current._files = [];
+          current._files.push(file);
+        } else {
+          // Folder
+          if (!current[part]) current[part] = {};
+          current = current[part];
+        }
+      });
+    });
+    return tree;
+  };
+
+  // Render folder tree recursively
+  const renderFolderTree = (tree, depth = 0) => {
+    const items = [];
+    const folders = Object.keys(tree).filter(k => k !== '_files').sort();
+    const filesInFolder = tree._files || [];
+
+    // Render folders first
+    folders.forEach(folderName => {
+      items.push(
+        <div key={`folder-${folderName}`}>
+          <div style={{
+            fontSize: '12px', fontWeight: '600', padding: `${4 + depth * 8}px 8px 4px 8px`,
+            color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px'
+          }}>
+            📁 {folderName}
+          </div>
+          {renderFolderTree(tree[folderName], depth + 1)}
+        </div>
+      );
+    });
+
+    // Render files in this folder
+    filesInFolder.forEach(f => (
+      <div key={f.id || f.filePath} className="file-item" onClick={() => openFile(f)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px', padding: `6px 8px ${6}px ${8 + (depth + 1) * 8}px`,
+          borderRadius: '4px', cursor: 'pointer', marginBottom: '2px',
+          background: selectedFile?.filePath === f.filePath ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+          color: selectedFile?.filePath === f.filePath ? 'var(--primary-light)' : 'var(--text)',
+          transition: 'all 0.15s ease'
+        }}>
+        <span style={{
+          width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+          background: langColor(f.language)
+        }} />
+        <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {f.fileName}
+        </span>
+        {f.binary && <span className="badge badge-gray" style={{ fontSize: '9px', marginLeft: 'auto' }}>bin</span>}
+      </div>
+    ));
+
+    return items;
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -135,24 +201,11 @@ export default function RepositoryPage() {
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: '600', letterSpacing: '0.5px' }}>
               FILES ({files.length})
             </div>
-            {files.map(f => (
-              <div key={f.id || f.filePath} className="file-item" onClick={() => openFile(f)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '4px',
-                  cursor: 'pointer', marginBottom: '2px',
-                  background: selectedFile?.filePath === f.filePath ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
-                  color: selectedFile?.filePath === f.filePath ? 'var(--primary-light)' : 'var(--text)'
-                }}>
-                <span style={{
-                  width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-                  background: langColor(f.language)
-                }} />
-                <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {f.filePath}
-                </span>
-                {f.binary && <span className="badge badge-gray" style={{ fontSize: '9px', marginLeft: 'auto' }}>bin</span>}
-              </div>
-            ))}
+            {files.length > 0 ? (
+              renderFolderTree(buildFolderTree(files))
+            ) : (
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px' }}>No files</div>
+            )}
           </div>
 
           {/* File content */}
@@ -193,17 +246,20 @@ export default function RepositoryPage() {
                 </div>
 
                 {/* Code Viewer Container */}
-                <div style={{ flex: 1, overflow: 'auto', background: '#0d1117', padding: '16px' }}>
+                <div style={{ flex: 1, overflow: 'auto', background: 'var(--cs-input-bg)', padding: '16px' }}>
                   <pre style={{
                     margin: 0,
                     fontSize: '13px',
-                    fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
+                    fontFamily: 'var(--font-mono)',
                     lineHeight: '1.6',
-                    color: '#e6edf3',
+                    color: 'var(--cs-text-main) !important',
                     whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word'
+                    wordBreak: 'break-word',
+                    backgroundColor: 'var(--cs-input-bg) !important'
                   }}>
-                    {fileContent || '(empty file)'}
+                    <code style={{ color: 'inherit', backgroundColor: 'transparent' }}>
+                      {fileContent || '(empty file)'}
+                    </code>
                   </pre>
                 </div>
               </div>
