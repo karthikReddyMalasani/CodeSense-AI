@@ -118,7 +118,7 @@ export function AuthProvider({ children }) {
           password,
           options: {
             data: { name: legacyData.name },
-            autoConfirm: true // Auto-confirm since they're an existing user
+            emailRedirectTo: `${window.location.origin}/dashboard`
           }
         });
         
@@ -134,12 +134,30 @@ export function AuthProvider({ children }) {
           }
           throw signUpError;
         }
-        
-        if (!signUpData.session) {
-          throw new Error('Account created but session not established. Please log in again.');
+
+        // If signup was successful but no session yet, sign in immediately
+        if (signUpData.session) {
+          return exchangeSession(signUpData.session, legacyData.name);
         }
-        
-        return exchangeSession(signUpData.session, legacyData.name);
+
+        // Account created but no auto session - sign in manually
+        console.log('Account created, signing in manually...');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: legacyData.email,
+          password
+        });
+
+        if (signInError) {
+          // If still can't sign in, user needs to verify email
+          console.warn('Sign in after signup failed, user may need email verification');
+          throw new Error('Account created. Please check your email for verification link and try logging in again.');
+        }
+
+        if (!signInData.session) {
+          throw new Error('Account created but session could not be established. Please try logging in again.');
+        }
+
+        return exchangeSession(signInData.session, legacyData.name);
       } catch (legacyError) {
         // If legacy verification also fails, throw the original Supabase error
         if (legacyError.response?.status === 404 || legacyError.message?.includes('not found')) {
