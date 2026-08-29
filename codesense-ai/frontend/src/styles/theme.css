@@ -184,6 +184,31 @@ a:hover { text-decoration: underline; }
   color: var(--text);
 }
 
+/* Input styling - black text with white background */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="number"]::placeholder,
+input[type="search"]::placeholder,
+input[type="url"]::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important;
+}
+
 /* Responsive tables */
 @media (max-width: 900px) {
   .api-docs table, .docs-content table, .markdown-body table {
