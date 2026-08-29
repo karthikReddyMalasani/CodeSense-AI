@@ -13,6 +13,7 @@ import Navbar from './components/Navbar/Navbar';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import OAuthConsentPage from './pages/OAuthConsentPage';
 import DashboardPage from './pages/DashboardPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
@@ -74,6 +75,7 @@ function App() {
                   {/* Public Auth Routes (No Sidebar/Navbar) */}
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/oauth/consent" element={<OAuthConsentPage />} />
 
                   {/* Protected Main Application Layout Shell */}
                   <Route element={<PrivateRoute />}>

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/LoginPage.css';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, sendMagicLink, socialLogin } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: '', password: '' });
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [globalError, setGlobalError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -63,6 +64,24 @@ export default function LoginPage() {
       const data = err.response?.data;
       const msg = data?.message || err.message || `${provider} authentication failed. Please try again.`;
       setGlobalError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailVerification = async () => {
+    setGlobalError('');
+    setEmailSent(false);
+    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) {
+      setErrors({ ...errors, email: 'Enter a valid email address first' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await sendMagicLink(form.email);
+      setEmailSent(true);
+    } catch (err) {
+      setGlobalError(err.message || 'Unable to send the verification email. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -151,6 +170,11 @@ export default function LoginPage() {
                 {globalError}
               </div>
             )}
+            {emailSent && (
+              <div className="cs-global-alert" style={{ marginBottom: '18px' }}>
+                Check your email for a secure sign-in link.
+              </div>
+            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="cs-auth-form" noValidate>
@@ -209,6 +233,16 @@ export default function LoginPage() {
                   Forgot password?
                 </a>
               </div>
+
+              <button
+                type="button"
+                className="cs-btn-social"
+                onClick={handleEmailVerification}
+                disabled={loading}
+              >
+                <Mail size={18} />
+                Email me a verification link
+              </button>
 
               {/* Submit Button */}
               <button
