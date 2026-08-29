@@ -41,7 +41,8 @@ export function AuthProvider({ children }) {
       }
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !localStorage.getItem('token')) {
         setLoading(true);
-        exchangeSession(session).catch((error) => {
+        const provider = session.user.app_metadata?.provider;
+        exchangeSession(session, undefined, provider === 'google' || provider === 'github').catch((error) => {
           if (mounted) setLoading(false);
           console.error('Unable to create the CodeSense session:', error);
         });
@@ -55,8 +56,12 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   // Supabase verifies credentials; the exchange returns the app API token.
-  const exchangeSession = async (session, name) => {
+  const exchangeSession = async (session, name, requireVerifiedEmail = false) => {
     if (!session?.user?.email) throw new Error('Supabase did not return an email for this account.');
+    if (requireVerifiedEmail && !session.user.email_confirmed_at && !session.user.confirmed_at) {
+      await supabase.auth.signOut();
+      throw new Error('Your Google or GitHub email could not be verified. Please use a verified provider account.');
+    }
     const res = await authApi.socialLogin({
       provider: 'supabase',
       email: session.user.email,
