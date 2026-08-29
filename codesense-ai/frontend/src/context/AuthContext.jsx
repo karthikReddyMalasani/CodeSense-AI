@@ -106,10 +106,19 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { name: name.trim() } }
+      options: {
+        data: { name: name.trim() },
+        emailRedirectTo: `${window.location.origin}/dashboard`
+      }
     });
     if (error) throw error;
-    if (!data.session) throw new Error('Check your email to confirm your account, then sign in.');
+    if (!data.session) {
+      throw new Error('Account created. Verify your email using the link we sent, then return here to sign in.');
+    }
+    if (!data.user?.email_confirmed_at && !data.user?.confirmed_at) {
+      await supabase.auth.signOut();
+      throw new Error('Account created. Verify your email using the link we sent before continuing.');
+    }
     return exchangeSession(data.session, name);
   };
 
