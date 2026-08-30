@@ -98,19 +98,27 @@ export default function RepositoryPage() {
     return map[lang] || '#94a3b8';
   };
 
+  const [expandedFolders, setExpandedFolders] = useState({});
+
+  const toggleFolderExpand = (folderPath) => {
+    setExpandedFolders(prev => ({
+      ...prev,
+      [folderPath]: prev[folderPath] === undefined ? false : !prev[folderPath]
+    }));
+  };
+
   // Build hierarchical folder structure
   const buildFolderTree = (files) => {
     const tree = {};
     files.forEach(file => {
-      const parts = file.filePath.split('/');
+      const pathStr = file.filePath || file.path || file.fileName || '';
+      const parts = pathStr.split('/').filter(Boolean);
       let current = tree;
       parts.forEach((part, idx) => {
         if (idx === parts.length - 1) {
-          // File
           if (!current._files) current._files = [];
           current._files.push(file);
         } else {
-          // Folder
           if (!current[part]) current[part] = {};
           current = current[part];
         }
@@ -119,43 +127,83 @@ export default function RepositoryPage() {
     return tree;
   };
 
-  // Render folder tree recursively
-  const renderFolderTree = (tree, depth = 0) => {
+  // Render folder tree recursively with expandable/collapsible nodes
+  const renderFolderTree = (tree, depth = 0, currentPath = '') => {
     const items = [];
     const folders = Object.keys(tree).filter(k => k !== '_files').sort();
     const filesInFolder = tree._files || [];
 
-    // Render folders first
+    // Render folders
     folders.forEach(folderName => {
+      const folderPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+      // Default to expanded for top-level folders, or check state
+      const isExpanded = expandedFolders[folderPath] !== undefined ? expandedFolders[folderPath] : true;
+
       items.push(
-        <div key={`folder-${folderName}`}>
-          <div style={{
-            fontSize: '12px', fontWeight: '600', padding: `${4 + depth * 8}px 8px 4px 8px`,
-            color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px'
-          }}>
-            📁 {folderName}
+        <div key={`folder-${folderPath}`}>
+          <div
+            onClick={() => toggleFolderExpand(folderPath)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12px',
+              fontWeight: '700',
+              padding: `6px 8px 6px ${depth * 12 + 8}px`,
+              color: 'var(--text-muted)',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              userSelect: 'none',
+              transition: 'background 0.15s ease',
+              marginBottom: '2px'
+            }}
+            className="folder-tree-header"
+          >
+            <span style={{ fontSize: '11px', width: '12px', color: 'var(--text-muted)' }}>
+              {isExpanded ? '▼' : '►'}
+            </span>
+            <span style={{ fontSize: '14px' }}>
+              {isExpanded ? '📂' : '📁'}
+            </span>
+            <span style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {folderName}
+            </span>
           </div>
-          {renderFolderTree(tree[folderName], depth + 1)}
+
+          {isExpanded && renderFolderTree(tree[folderName], depth + 1, folderPath)}
         </div>
       );
     });
 
-    // Render files in this folder
+    // Render files inside current folder
     filesInFolder.forEach(f => (
-      <div key={f.id || f.filePath} className="file-item" onClick={() => openFile(f)}
+      <div
+        key={f.id || f.filePath}
+        className="file-item"
+        onClick={() => openFile(f)}
         style={{
-          display: 'flex', alignItems: 'center', gap: '8px', padding: `6px 8px ${6}px ${8 + (depth + 1) * 8}px`,
-          borderRadius: '4px', cursor: 'pointer', marginBottom: '2px',
-          background: selectedFile?.filePath === f.filePath ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: `6px 8px 6px ${depth * 12 + 24}px`,
+          borderRadius: '4px',
+          cursor: 'pointer',
+          marginBottom: '2px',
+          background: selectedFile?.filePath === f.filePath ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
           color: selectedFile?.filePath === f.filePath ? 'var(--primary-light)' : 'var(--text)',
+          fontWeight: selectedFile?.filePath === f.filePath ? '600' : '400',
           transition: 'all 0.15s ease'
-        }}>
+        }}
+      >
         <span style={{
-          width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          flexShrink: 0,
           background: langColor(f.language)
         }} />
         <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {f.fileName}
+          {f.fileName || (f.filePath ? f.filePath.split('/').pop() : 'file')}
         </span>
         {f.binary && <span className="badge badge-gray" style={{ fontSize: '9px', marginLeft: 'auto' }}>bin</span>}
       </div>
