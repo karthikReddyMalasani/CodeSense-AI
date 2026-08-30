@@ -75,16 +75,28 @@ export function AuthProvider({ children }) {
   const exchangeSession = async (session, name, requireVerifiedEmail = false) => {
     if (exchangeInProgress.current) return user;
     if (!session?.user?.email) throw new Error('Supabase did not return an email for this account.');
-    if (requireVerifiedEmail && !session.user.email_confirmed_at && !session.user.confirmed_at) {
+
+    const isOAuth = session.user.app_metadata?.provider === 'github' ||
+      session.user.app_metadata?.provider === 'google' ||
+      session.user.app_metadata?.provider === 'gitlab';
+
+    if (requireVerifiedEmail && !isOAuth && !session.user.email_confirmed_at && !session.user.confirmed_at) {
       await supabase.auth.signOut();
-      throw new Error('Your Google or GitHub email could not be verified. Please use a verified provider account.');
+      throw new Error('Your email could not be verified. Please check your inbox for the verification email.');
     }
+
     exchangeInProgress.current = true;
     try {
+      const displayName = name ||
+        session.user.user_metadata?.name ||
+        session.user.user_metadata?.full_name ||
+        session.user.user_metadata?.preferred_username ||
+        session.user.email.split('@')[0];
+
       const res = await authApi.socialLogin({
         provider: 'supabase',
         email: session.user.email,
-        name: name || session.user.user_metadata?.name || session.user.email.split('@')[0]
+        name: displayName
       });
       const { token: newToken, ...userData } = res.data.data;
       localStorage.setItem('token', newToken);
@@ -242,7 +254,7 @@ export function AuthProvider({ children }) {
   const socialLogin = async (provider) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider.toLowerCase(),
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: `${window.location.origin}/dashboard` }
     });
     if (error) throw error;
   };
