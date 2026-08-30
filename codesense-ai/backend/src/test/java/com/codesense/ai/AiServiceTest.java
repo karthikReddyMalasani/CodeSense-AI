@@ -10,6 +10,10 @@ import com.codesense.ai.rag.RagService;
 import com.codesense.ai.service.AiService;
 import com.codesense.ai.vector.VectorSearchService;
 import com.codesense.common.exception.ResourceNotFoundException;
+import com.codesense.parser.model.CodeElement;
+import com.codesense.parser.model.ParsedFile;
+import com.codesense.parser.service.ParserRouter;
+import com.codesense.project.model.Project;
 import com.codesense.repository.model.Repository;
 import com.codesense.repository.model.RepositoryFile;
 import com.codesense.repository.repository.RepositoryFileRepository;
@@ -40,6 +44,7 @@ class AiServiceTest {
     @Mock RepositoryRepo repositoryRepo;
     @Mock RepositoryFileRepository repositoryFileRepository;
     @Mock DocumentationRepository documentationRepository;
+    @Mock ParserRouter parserRouter;
 
     @InjectMocks AiService aiService;
 
@@ -122,5 +127,74 @@ class AiServiceTest {
 
         assertThatThrownBy(() -> aiService.explainCode(req))
             .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void generateApiDocs_whenLLMFails_usesDetectedRoutesFromFileContent() {
+        Project project = new Project();
+        project.setId(projectId);
+        mockRepo.setProject(project);
+        mockRepo.setPrimaryLanguage("Java");
+
+        RepositoryFile authFile = RepositoryFile.builder()
+            .filePath("src/main/java/com/example/AuthController.java")
+            .fileName("AuthController.java")
+            .language("Java")
+            .content("""
+                @RestController
+                @RequestMapping(\"/api/auth\")
+                public class AuthController {
+                    @PostMapping(\"/register\")
+                    public String register() { return \"ok\"; }
+
+                    @DeleteMapping(\"/logout\")
+                    public String logout() { return \"ok\"; }
+                }
+                """)
+            .build();
+
+        RepositoryFile userFile = RepositoryFile.builder()
+            .filePath("src/main/java/com/example/UserController.java")
+            .fileName("UserController.java")
+            .language("Java")
+            .content("""
+                @RestController
+                public class UserController {
+                    @GetMapping(\"/users\")
+                    public List<String> listUsers() { return List.of(); }
+                }
+                """)
+            .build();
+
+        when(repositoryRepo.findById(repositoryId)).thenReturn(Optional.of(mockRepo));
+        when(repositoryRepo.findByIdAndProjectId(repositoryId, projectId)).thenReturn(Optional.of(mockRepo));
+        when(repositoryFileRepository.findByRepositoryIdAndIgnoredFalse(repositoryId)).thenReturn(List.of(userFile, authFile));
+        when(parserRouter.parse(anyString(), anyString(), anyString())).thenAnswer(invocation -> {
+            String filePath = invocation.getArgument(0);
+            String content = invocation.getArgument(1);
+            String language = invocation.getArgument(2);
+
+            String fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+            List<CodeElement> elements = new ArrayList<>();
+            if (fileName.contains("AuthController")) {
+                elements.add(CodeElement.builder().name("register").type(CodeElement.ElementType.METHOD).annotations(List.of()).build());
+                elements.add(CodeElement.builder().name("logout").type(CodeElement.ElementType.METHOD).annotations(List.of()).build());
+            } else {
+                elements.add(CodeElement.builder().name("listUsers").type(CodeElement.ElementType.METHOD).annotations(List.of()).build());
+            }
+            return ParsedFile.builder().filePath(filePath).language(language).content(content).elements(elements).relationships(List.of()).build();
+        });
+
+        when(llmService.generate(any())).thenReturn(LLMResponse.builder().success(false).errorMessage("timeout").build());
+        when(documentationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        GenerateApiDocsRequestDto req = new GenerateApiDocsRequestDto();
+        req.setProjectId(projectId);
+        req.setRepositoryId(repositoryId);
+
+        GenerateApiDocsResponseDto resp = aiService.generateApiDocs("user@test.com", req);
+
+        assertThat(resp.getContent()).contains("POST").contains("DELETE").contains("GET");
+        assertThat(resp.getContent()).doesNotContain("| `GET` | `/register` |");
     }
 }

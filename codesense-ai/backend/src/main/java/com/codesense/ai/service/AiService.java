@@ -28,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -215,15 +217,19 @@ public class AiService {
         List<RepositoryFile> allFiles = repositoryFileRepository
             .findByRepositoryIdAndIgnoredFalse(repo.getId());
 
-        List<RepositoryFile> apiFiles = allFiles.stream()
+        List<RepositoryFile> sortedFiles = allFiles.stream()
+            .sorted(Comparator.comparing(RepositoryFile::getFilePath, Comparator.nullsLast(String::compareToIgnoreCase)))
+            .collect(Collectors.toList());
+
+        List<RepositoryFile> apiFiles = sortedFiles.stream()
             .filter(f -> isApiFile(f.getFileName(), f.getLanguage()))
-            .limit(15)
+            .limit(100)
             .collect(Collectors.toList());
 
         if (apiFiles.isEmpty()) {
-            apiFiles = allFiles.stream()
+            apiFiles = sortedFiles.stream()
                 .filter(f -> f.getContent() != null && !f.isBinary())
-                .limit(10)
+                .limit(100)
                 .collect(Collectors.toList());
         }
 
@@ -336,20 +342,12 @@ public class AiService {
 
         for (ParsedFile pf : parsedApiFiles) {
             String fileName = pf.getFilePath();
+            Map<String, String> routeMetadata = extractRouteMetadata(pf.getContent());
             for (CodeElement elem : pf.getElements()) {
                 if (elem.getType() == CodeElement.ElementType.METHOD || elem.getType() == CodeElement.ElementType.FUNCTION) {
                     List<String> annos = elem.getAnnotations() != null ? elem.getAnnotations() : List.of();
-                    String httpMethod = "GET";
-                    String path = "/" + elem.getName().toLowerCase();
-
-                    for (String a : annos) {
-                        String aLower = a.toLowerCase();
-                        if (aLower.contains("getmapping") || aLower.contains("get")) httpMethod = "GET";
-                        else if (aLower.contains("postmapping") || aLower.contains("post")) httpMethod = "POST";
-                        else if (aLower.contains("putmapping") || aLower.contains("put")) httpMethod = "PUT";
-                        else if (aLower.contains("deletemapping") || aLower.contains("delete")) httpMethod = "DELETE";
-                        else if (aLower.contains("requestmapping")) httpMethod = "ALL";
-                    }
+                    String httpMethod = inferHttpMethod(elem.getName(), annos, routeMetadata);
+                    String path = inferEndpointPath(elem.getName(), annos, routeMetadata, pf.getContent());
 
                     String parent = elem.getParentName() != null ? elem.getParentName() : "Controller";
                     String returnType = elem.getReturnType() != null ? elem.getReturnType() : "void";
@@ -453,6 +451,92 @@ public class AiService {
         String lower = fileName.toLowerCase();
         return lower.contains("controller") || lower.contains("route") || lower.contains("router")
             || lower.contains("api") || lower.contains("endpoint") || lower.contains("handler");
+    }
+
+    private Map<String, String> extractRouteMetadata(String content) {
+        Map<String, String> routeMetadata = new HashMap<>();
+        if (content == null || content.isBlank()) return routeMetadata;
+
+        String normalized = content.replace("\r\n", "\n");
+        Matcher classMatcher = Pattern.compile("@(?:RequestMapping|GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping)\\s*\\((.*?)\\)")
+            .matcher(normalized);
+        String classPrefix = "";
+        while (classMatcher.find()) {
+            String args = classMatcher.group(1);
+            String extracted = extractQuotedPath(args);
+            if (extracted != null && !extracted.isBlank()) {
+                classPrefix = extracted;
+                break;
+            }
+        }
+
+        Matcher methodMatcher = Pattern.compile("@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\\s*\\((.*?)\\)\\s*\\n\\s*(?:public|private|protected)\\s+(?:[\\w<>,\\[\\]\\?]+\\s+)?([A-Za-z0-9_]+)\\s*\\(")
+            .matcher(normalized);
+        while (methodMatcher.find()) {
+            String annotation = methodMatcher.group(1);
+            String args = methodMatcher.group(2);
+            String methodName = methodMatcher.group(3);
+            String path = extractQuotedPath(args);
+            if (path == null || path.isBlank()) {
+                path = "/" + methodName.toLowerCase();
+            }
+            if (!classPrefix.isBlank() && !path.startsWith("/")) {
+                path = classPrefix + "/" + path;
+            } else if (!classPrefix.isBlank() && path.startsWith("/")) {
+                path = classPrefix + path;
+            }
+            routeMetadata.put(methodName, annotation + ":" + path);
+        }
+
+        return routeMetadata;
+    }
+
+    private String inferHttpMethod(String methodName, List<String> annotations, Map<String, String> routeMetadata) {
+        String routeInfo = routeMetadata.get(methodName);
+        if (routeInfo != null && !routeInfo.isBlank()) {
+            return routeInfo.split(":", 2)[0].replace("Mapping", "").toUpperCase();
+        }
+
+        for (String a : annotations) {
+            String aLower = a.toLowerCase();
+            if (aLower.contains("getmapping") || aLower.contains("get")) return "GET";
+            if (aLower.contains("postmapping") || aLower.contains("post")) return "POST";
+            if (aLower.contains("putmapping") || aLower.contains("put")) return "PUT";
+            if (aLower.contains("deletemapping") || aLower.contains("delete")) return "DELETE";
+            if (aLower.contains("patchmapping") || aLower.contains("patch")) return "PATCH";
+            if (aLower.contains("requestmapping")) return "ALL";
+        }
+
+        String lower = methodName.toLowerCase();
+        if (lower.startsWith("get") || lower.startsWith("find") || lower.startsWith("list") || lower.startsWith("fetch") || lower.startsWith("read")) return "GET";
+        if (lower.startsWith("create") || lower.startsWith("add") || lower.startsWith("save") || lower.startsWith("post")) return "POST";
+        if (lower.startsWith("update") || lower.startsWith("modify") || lower.startsWith("put")) return "PUT";
+        if (lower.startsWith("delete") || lower.startsWith("remove") || lower.startsWith("destroy")) return "DELETE";
+        return "UNKNOWN";
+    }
+
+    private String inferEndpointPath(String methodName, List<String> annotations, Map<String, String> routeMetadata, String fileContent) {
+        String routeInfo = routeMetadata.get(methodName);
+        if (routeInfo != null && routeInfo.contains(":")) {
+            return routeInfo.substring(routeInfo.indexOf(':') + 1);
+        }
+
+        for (String a : annotations) {
+            String aLower = a.toLowerCase();
+            if (aLower.contains("mapping")) {
+                return "/" + methodName.toLowerCase();
+            }
+        }
+        return "/" + methodName.toLowerCase();
+    }
+
+    private String extractQuotedPath(String rawArgs) {
+        if (rawArgs == null) return null;
+        Matcher matcher = Pattern.compile("\"([^\"]+)\"").matcher(rawArgs);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 
     private String extractSection(String text, String sectionName) {
