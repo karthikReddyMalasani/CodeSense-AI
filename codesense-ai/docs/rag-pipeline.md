@@ -190,7 +190,7 @@ INSTRUCTIONS:
 | Property | Value |
 |---|---|
 | Provider (mock) | `MockEmbeddingService` — deterministic SHA-256 seeded, L2-normalised |
-| Provider (prod) | `WatsonxEmbeddingService` — IBM watsonx.ai embedding API |
+| Provider (prod) | `GeminiEmbeddingService` — Google Gemini embedding API |
 | Dimension | 768 |
 | Storage | `pgvector` extension, `vector(768)` column |
 | Similarity | Cosine (`<=>` operator) |
@@ -198,8 +198,8 @@ INSTRUCTIONS:
 
 Switch provider via environment variable:
 ```
-AI_EMBEDDING_PROVIDER=mock      # default, no IBM credentials needed
-AI_EMBEDDING_PROVIDER=watsonx   # production
+AI_EMBEDDING_PROVIDER=mock      # local development, no AI credentials needed
+AI_EMBEDDING_PROVIDER=gemini    # production
 ```
 
 ---
@@ -241,15 +241,15 @@ Source references come **only** from retrieved chunks — never invented.
 
 | Environment Variable | Description | Default |
 |---|---|---|
-| `AI_LLM_PROVIDER` | `mock` or `watsonx` | `mock` |
-| `AI_EMBEDDING_PROVIDER` | `mock` or `watsonx` | `mock` |
+| `AI_LLM_PROVIDER` | `mock` or `gemini` | `gemini` |
+| `AI_EMBEDDING_PROVIDER` | `mock` or `gemini` | `gemini` |
 | `AI_RAG_TOP_K` | Number of chunks to retrieve | `5` |
 | `AI_CHUNK_SIZE` | Text fallback chunk size (chars) | `512` |
 | `AI_CHUNK_OVERLAP` | Text fallback overlap (chars) | `50` |
-| `IBM_WATSONX_URL` | watsonx.ai endpoint | — |
-| `IBM_WATSONX_API_KEY` | API key | — |
-| `IBM_WATSONX_PROJECT_ID` | Project ID | — |
-| `IBM_WATSONX_MODEL_ID` | Granite model ID | `ibm/granite-13b-chat-v2` |
+| `GEMINI_API_KEY` | Google AI Studio API key | — |
+| `GEMINI_MODEL` | Gemini generation model | `gemini-2.5-flash` |
+| `GEMINI_EMBEDDING_MODEL` | Gemini embedding model | `gemini-embedding-001` |
+| `EMBEDDING_DIMENSION` | pgvector embedding dimension | `768` |
 
 ---
 

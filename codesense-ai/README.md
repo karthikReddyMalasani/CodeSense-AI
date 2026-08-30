@@ -100,8 +100,8 @@ Frontend: http://localhost:3000
 |----------|-------|-------------|
 | `AI_LLM_PROVIDER` | `gemini` | Real AI answers via Google Gemini |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model used for generation |
-| `AI_EMBEDDING_PROVIDER` | `mock` | Deterministic embeddings for semantic search |
-| `AI_LLM_PROVIDER` | `mock` | Fake responses — for offline testing UI only |
+| `AI_EMBEDDING_PROVIDER` | `gemini` | Gemini embeddings for semantic search |
+| `AI_LLM_PROVIDER` | `gemini` | Gemini responses |
 
 > Gemini API quotas and billing depend on your Google AI Studio project.
 
@@ -161,6 +161,8 @@ codesense-ai/
 | `JWT_SECRET` | ✅ | 64+ char base64 secret |
 | `GEMINI_API_KEY` | ✅ (for AI) | From Google AI Studio |
 | `GEMINI_MODEL` | optional | default: `gemini-2.5-flash` |
+| `GEMINI_EMBEDDING_MODEL` | optional | default: `gemini-embedding-001` |
+| `EMBEDDING_DIMENSION` | optional | default: `768` |
 | `GITHUB_ACCESS_TOKEN` | optional | For private GitHub repos |
 | `UPLOAD_DIR` | optional | default: `./uploads` |
 | `MAX_UPLOAD_SIZE_MB` | optional | default: `100` |

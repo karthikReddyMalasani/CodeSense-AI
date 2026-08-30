@@ -80,28 +80,26 @@ The frontend starts at: `http://localhost:3000`
 
 ---
 
-## Running with IBM watsonx.ai
+## Running with Google Gemini
 
-1. Create an IBM Cloud account at https://cloud.ibm.com
-2. Create a Watson Machine Learning service instance
-3. Create a project in IBM Watson Studio
-4. Generate an API key in IAM settings
-5. Configure in `.env`:
+1. Create a Google AI Studio account
+2. Generate a Gemini API key
+3. Configure in `.env`:
 
 ```env
-IBM_WATSONX_URL=https://us-south.ml.cloud.ibm.com
-IBM_WATSONX_API_KEY=your_api_key
-IBM_WATSONX_PROJECT_ID=your_project_id
-IBM_WATSONX_MODEL_ID=ibm/granite-13b-chat-v2
-AI_LLM_PROVIDER=watsonx
-AI_EMBEDDING_PROVIDER=watsonx
+GEMINI_API_KEY=your_api_key
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_EMBEDDING_MODEL=gemini-embedding-001
+EMBEDDING_DIMENSION=768
+AI_LLM_PROVIDER=gemini
+AI_EMBEDDING_PROVIDER=gemini
 ```
 
 ---
 
-## Running in Mock Mode (No IBM Credentials)
+## Running in Mock Mode (No AI credentials)
 
-The application runs fully in mock mode by default:
+The application can run fully in mock mode for local development:
 
 ```env
 AI_LLM_PROVIDER=mock

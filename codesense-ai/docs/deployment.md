@@ -9,7 +9,7 @@ This document covers deploying CodeSense AI to a production environment.
 - Docker 24+ and Docker Compose v2
 - PostgreSQL 15+ with PGVector extension (or use the bundled Docker service)
 - 4 GB RAM minimum (8 GB recommended)
-- IBM Cloud account with watsonx.ai access (optional — mock mode works for development)
+- Google AI Studio account with Gemini API access (optional — mock mode works for development)
 
 ---
 
@@ -28,16 +28,16 @@ cp .env.example .env
 | `POSTGRES_PASSWORD` | Strong PostgreSQL password |
 | `JWT_SECRET` | Random 64+ char secret: `openssl rand -base64 64` |
 
-### IBM watsonx.ai (for real AI)
+### Google Gemini (for real AI)
 
 | Variable | Description |
 |---|---|
-| `IBM_WATSONX_URL` | `https://us-south.ml.cloud.ibm.com` |
-| `IBM_WATSONX_API_KEY` | IBM Cloud API key |
-| `IBM_WATSONX_PROJECT_ID` | watsonx.ai project ID |
-| `IBM_WATSONX_MODEL_ID` | e.g. `ibm/granite-13b-chat-v2` |
-| `AI_LLM_PROVIDER` | `watsonx` (or `mock` for local dev) |
-| `AI_EMBEDDING_PROVIDER` | `watsonx` (or `mock` for local dev) |
+| `GEMINI_API_KEY` | Google AI Studio API key |
+| `GEMINI_MODEL` | Gemini generation model, normally `gemini-2.5-flash` |
+| `GEMINI_EMBEDDING_MODEL` | Embedding model, normally `gemini-embedding-001` |
+| `EMBEDDING_DIMENSION` | Must be `768` for the configured pgvector schema |
+| `AI_LLM_PROVIDER` | `gemini` (or `mock` for local dev) |
+| `AI_EMBEDDING_PROVIDER` | `gemini` (or `mock` for local dev) |
 
 ---
 
@@ -128,6 +128,6 @@ docker compose build
 ## Known Limitations
 
 - PGVector `ivfflat` index requires at least 100 vectors before it's useful — use exact search for small repositories
-- IBM watsonx.ai requires internet access and valid credentials
+- Gemini requires internet access and a valid `GEMINI_API_KEY`
 - ZIP upload limited to `MAX_UPLOAD_SIZE_MB` (default 100MB)
 - GitHub integration uses public API rate limits unless `GITHUB_ACCESS_TOKEN` is set
