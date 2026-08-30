@@ -12,6 +12,7 @@ import com.codesense.auth.model.User;
 import com.codesense.auth.repository.UserRepository;
 import com.codesense.common.exception.ResourceNotFoundException;
 import com.codesense.repository.model.Repository;
+import com.codesense.repository.model.IngestionStatus;
 import com.codesense.repository.repository.RepositoryRepo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +69,19 @@ public class RagService {
 
         log.debug("RAG chat: project={}, repo={}, question={}",
             projectId, repositoryId, request.getQuestion());
+
+        Repository repository = repositoryRepo.findById(repositoryId)
+            .orElseThrow(() -> new ResourceNotFoundException("Repository", repositoryId.toString()));
+        if (repository.getIngestionStatus() != IngestionStatus.COMPLETED) {
+            String status = repository.getIngestionStatus() != null
+                ? repository.getIngestionStatus().name().toLowerCase() : "pending";
+            return ChatResponseDto.builder()
+                .answer("### Repository indexing is not ready\n\n"
+                    + "AI chat is waiting for repository ingestion to finish. Current status: **"
+                    + status + "**. Start **Ingest AI** from the project page, then try again.")
+                .sources(List.of())
+                .build();
+        }
 
         Conversation conversation = getOrCreateConversation(userEmail, request);
         String history = buildConversationHistory(conversation);
@@ -274,9 +288,14 @@ public class RagService {
         }
 
         if (errorMsg != null && !errorMsg.isBlank()) {
-            answer.append("\n\n---\n*System notice: ")
-                  .append(errorMsg)
-                  .append("*");
+            answer.append("\n\n---\n\n**AI provider notice:** ");
+            if (errorMsg.contains("configured Groq model")) {
+                answer.append("The configured Groq model is unavailable. Set `GROQ_MODEL=llama-3.3-70b-versatile` and redeploy.");
+            } else if (errorMsg.contains("GROQ_API_KEY")) {
+                answer.append("Groq is not configured. Add `GROQ_API_KEY` to the backend environment and redeploy.");
+            } else {
+                answer.append("The AI provider is temporarily unavailable. Check the backend AI configuration and try again.");
+            }
         }
 
         return answer.toString();

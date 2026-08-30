@@ -10,6 +10,7 @@ import com.codesense.auth.model.User;
 import com.codesense.auth.repository.UserRepository;
 import com.codesense.project.model.Project;
 import com.codesense.repository.model.Repository;
+import com.codesense.repository.model.IngestionStatus;
 import com.codesense.repository.repository.RepositoryRepo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,6 +66,7 @@ class RagServiceTest {
         mockRepo.setId(repositoryId);
         mockRepo.setName("test-repo");
         mockRepo.setProject(mockProject);
+        mockRepo.setIngestionStatus(IngestionStatus.COMPLETED);
     }
 
     @Test

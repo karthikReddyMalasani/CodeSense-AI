@@ -11,6 +11,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ingesting, setIngesting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
 
@@ -21,6 +23,18 @@ export default function ChatPage() {
       if (repos.length > 0) setSelectedRepo(repos[0]);
     }).catch(() => { });
   }, [projectId]);
+
+  useEffect(() => {
+    if (!selectedRepo || selectedRepo.ingestionStatus === 'COMPLETED') return undefined;
+    const interval = setInterval(() => {
+      repositoryApi.list(projectId).then(res => {
+        const repos = (res.data.data || []).filter(r => r.status === 'READY');
+        setRepositories(repos);
+        setSelectedRepo(current => repos.find(repo => repo.id === current?.id) || current);
+      }).catch(() => { });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [projectId, selectedRepo]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,6 +76,19 @@ export default function ChatPage() {
     setConversationId(null);
   };
 
+  const startIngestion = async () => {
+    if (!selectedRepo || ingesting) return;
+    setIngesting(true);
+    setStatusMessage('Repository indexing started. This page will be ready for questions when ingestion completes.');
+    try {
+      await aiApi.ingest({ projectId, repositoryId: selectedRepo.id });
+    } catch (err) {
+      setStatusMessage(err.response?.data?.message || 'Could not start repository indexing. Please try again.');
+    } finally {
+      setIngesting(false);
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -85,6 +112,17 @@ export default function ChatPage() {
       </div>
 
       <ProjectSubNav activeTab="chat" />
+
+      {selectedRepo && selectedRepo.ingestionStatus !== 'COMPLETED' && (
+        <div className="alert alert-info" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span>
+            {statusMessage || `AI chat is waiting for repository indexing. Current status: ${selectedRepo.ingestionStatus || 'PENDING'}.`}
+          </span>
+          <button className="btn btn-secondary btn-sm" onClick={startIngestion} disabled={ingesting}>
+            {ingesting ? 'Indexing...' : '🔄 Ingest AI'}
+          </button>
+        </div>
+      )}
 
       {
         repositories.length === 0 ? (

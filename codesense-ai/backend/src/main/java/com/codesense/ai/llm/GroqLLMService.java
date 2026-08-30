@@ -106,10 +106,14 @@ public class GroqLLMService implements LLMService {
             if (e.getStatusCode().value() == 429) {
                 return LLMResponse.error("Groq rate limit reached. Wait a moment and try again.");
             }
+            if (e.getStatusCode().value() == 404) {
+                return LLMResponse.error(
+                    "The configured Groq model is unavailable. Set GROQ_MODEL to llama-3.3-70b-versatile and redeploy.");
+            }
             return LLMResponse.error("Groq API error: " + e.getStatusCode());
         } catch (Exception e) {
             log.error("Groq call failed: {}", e.getMessage());
-            return LLMResponse.error("Groq error: " + e.getMessage());
+            return LLMResponse.error("The AI provider could not be reached. Check the Groq configuration and try again.");
         }
     }
 
