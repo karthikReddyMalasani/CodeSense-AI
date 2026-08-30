@@ -15,6 +15,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
+    const isOAuthCallback = typeof window !== 'undefined' &&
+      (window.location.hash.includes('access_token=') ||
+        window.location.hash.includes('code=') ||
+        window.location.search.includes('code='));
+
     const loadProfile = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user && !localStorage.getItem('token')) {
@@ -28,7 +33,8 @@ export function AuthProvider({ children }) {
         return;
       }
       if (!token) {
-        if (mounted) setLoading(false);
+        // If an OAuth hash is in the URL, keep loading true so onAuthStateChange can finish
+        if (mounted && !isOAuthCallback) setLoading(false);
         return;
       }
       try {
@@ -53,11 +59,13 @@ export function AuthProvider({ children }) {
         setToken(null);
         setUser(null);
       }
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !localStorage.getItem('token')) {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user && !localStorage.getItem('token')) {
         setLoading(true);
-        const provider = session.user.app_metadata?.provider;
-        exchangeSession(session, undefined, provider === 'google' || provider === 'github').then(() => {
-          if (mounted) navigate('/dashboard', { replace: true });
+        exchangeSession(session).then(() => {
+          if (mounted) {
+            setLoading(false);
+            navigate('/dashboard', { replace: true });
+          }
         }).catch((error) => {
           if (mounted) setLoading(false);
           console.error('Unable to create the CodeSense session:', error);
