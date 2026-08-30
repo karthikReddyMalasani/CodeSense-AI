@@ -69,51 +69,16 @@ public class RagService {
         log.debug("RAG chat: project={}, repo={}, question={}",
             projectId, repositoryId, request.getQuestion());
 
-        // 1. Retrieve or create conversation  (transactional — own method)
         Conversation conversation = getOrCreateConversation(userEmail, request);
-
-        // 2. Build conversation history for context
         String history = buildConversationHistory(conversation);
-
-        // 3. Vector search for relevant chunks (non-blocking wrapper; fallback to empty list)
-        List<RepositoryChunk> relevantChunks;
-        try {
-            relevantChunks = vectorSearchService.semanticSearch(
-                projectId, repositoryId, request.getQuestion(), topK);
-        } catch (Exception e) {
-            log.warn("Vector search failed (proceeding without context): {}", e.getMessage());
-            relevantChunks = List.of();
-        }
-
-        // 4. Build context from chunks
+        List<RepositoryChunk> relevantChunks = searchRelevantChunks(projectId, repositoryId, request.getQuestion());
         String context = buildContext(relevantChunks);
-
-        // 5. Build prompt
         String prompt = promptTemplates.repositoryChat(request.getQuestion(), context, history);
 
-        // 6. Generate answer with Groq LLM (WebClient.block() — must NOT be inside @Transactional)
-        LLMResponse llmResponse;
-        try {
-            llmResponse = llmService.generate(
-                LLMRequest.builder()
-                    .prompt(prompt)
-                    .maxNewTokens(1024)
-                    .temperature(0.1)
-                    .build()
-            );
-        } catch (Exception e) {
-            log.error("LLM generation failed: {}", e.getMessage());
-            llmResponse = LLMResponse.error("LLM error: " + e.getMessage());
-        }
-
-        String answer = (llmResponse.isSuccess() && llmResponse.getGeneratedText() != null && !llmResponse.getGeneratedText().isBlank())
-            ? llmResponse.getGeneratedText().trim()
-            : generateRAGFallbackAnswer(request.getQuestion(), relevantChunks, llmResponse.getErrorMessage());
-
-        // 7. Extract source references
+        LLMResponse llmResponse = generateAnswer(prompt, request.getQuestion(), relevantChunks);
+        String answer = resolveAnswer(request.getQuestion(), relevantChunks, llmResponse);
         List<SourceReferenceDto> sources = extractSources(relevantChunks);
 
-        // 8. Persist messages in their own transaction
         persistMessages(conversation, request.getQuestion(), answer, sources);
 
         log.debug("RAG chat complete: {} sources, {} tokens",
@@ -125,6 +90,37 @@ public class RagService {
             .sources(sources)
             .modelId(llmResponse.getModelId())
             .build();
+    }
+
+    private List<RepositoryChunk> searchRelevantChunks(UUID projectId, UUID repositoryId, String question) {
+        try {
+            return vectorSearchService.semanticSearch(projectId, repositoryId, question, topK);
+        } catch (Exception e) {
+            log.warn("Vector search failed (proceeding without context): {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    private LLMResponse generateAnswer(String prompt, String question, List<RepositoryChunk> relevantChunks) {
+        try {
+            return llmService.generate(
+                LLMRequest.builder()
+                    .prompt(prompt)
+                    .maxNewTokens(1024)
+                    .temperature(0.1)
+                    .build()
+            );
+        } catch (Exception e) {
+            log.error("LLM generation failed for question '{}': {}", question, e.getMessage());
+            return LLMResponse.error("LLM error: " + e.getMessage());
+        }
+    }
+
+    private String resolveAnswer(String question, List<RepositoryChunk> relevantChunks, LLMResponse llmResponse) {
+        if (llmResponse.isSuccess() && llmResponse.getGeneratedText() != null && !llmResponse.getGeneratedText().isBlank()) {
+            return llmResponse.getGeneratedText().trim();
+        }
+        return generateRAGFallbackAnswer(question, relevantChunks, llmResponse.getErrorMessage());
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────

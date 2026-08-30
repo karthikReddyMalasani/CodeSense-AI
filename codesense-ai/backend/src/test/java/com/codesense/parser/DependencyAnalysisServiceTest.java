@@ -153,4 +153,19 @@ class DependencyAnalysisServiceTest {
         String diagram = service.generateMermaidClassDiagram(null);
         assertThat(diagram).isEqualTo("classDiagram\n");
     }
+
+    @Test
+    void generateMermaidArchitectureFlow_usesFilePathFallbackWhenElementsAreMissing() {
+        ParsedFile file = ParsedFile.builder()
+            .filePath("src/main/java/com/demo/controller/AuthController.java")
+            .language("Java")
+            .elements(List.of())
+            .build();
+
+        String flow = new com.codesense.parser.service.UmlDiagramService()
+            .generateMermaidArchitectureFlow(List.of(file));
+
+        assertThat(flow).contains("subgraph Controllers");
+        assertThat(flow).contains("AuthController");
+    }
 }

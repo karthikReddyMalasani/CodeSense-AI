@@ -122,7 +122,9 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
-    // Try direct Spring Boot backend login first
+    // Try direct Spring Boot backend login first.
+    // Fail fast on backend outages instead of waiting for the full 30s Axios timeout
+    // before degrading to the Supabase fallback path.
     try {
       const res = await authApi.login({ email: email.trim(), password });
       const { token: newToken, ...userData } = res.data.data;
@@ -132,9 +134,24 @@ export function AuthProvider({ children }) {
       return userData;
     } catch (backendError) {
       console.warn('Backend login error:', backendError);
-      // If backend returns a clear error message (e.g. Bad credentials), throw it directly
-      if (backendError.response?.data?.message) {
-        throw new Error(backendError.response.data.message);
+
+      const backendMessage = backendError.response?.data?.message;
+      const isCredentialFailure = backendError.response?.status === 401 ||
+        backendError.response?.status === 403 ||
+        backendMessage?.toLowerCase().includes('invalid credentials') ||
+        backendMessage?.toLowerCase().includes('user not found') ||
+        backendMessage?.toLowerCase().includes('account not found');
+
+      if (!backendError.response || backendError.code === 'ERR_NETWORK') {
+        throw new Error('Authentication service is temporarily unavailable. Please try again in a moment.');
+      }
+
+      if (backendMessage && !isCredentialFailure) {
+        throw new Error(backendMessage);
+      }
+
+      if (!isCredentialFailure) {
+        throw new Error('Unable to sign in. Please try again.');
       }
     }
 

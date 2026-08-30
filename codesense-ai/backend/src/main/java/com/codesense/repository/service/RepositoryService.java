@@ -223,51 +223,72 @@ public class RepositoryService {
         List<String> languages = new ArrayList<>();
 
         for (Path filePath : files) {
-            try {
-                String relativePath = rootPath.relativize(filePath).toString().replace("\\", "/");
-                String fileName = filePath.getFileName().toString();
-
-                if (languageDetectionService.isBinaryExtension(fileName)) {
-                    repoFiles.add(buildFile(repo, filePath, relativePath, null, true));
-                    continue;
-                }
-
-                if (Files.size(filePath) > 1024 * 1024) { // skip files > 1MB for content storage
-                    String lang = languageDetectionService.detectLanguage(fileName).orElse(null);
-                    repoFiles.add(buildFile(repo, filePath, relativePath, lang, false));
-                    if (lang != null && !languages.contains(lang)) languages.add(lang);
-                    continue;
-                }
-
-                String content = Files.readString(filePath, StandardCharsets.UTF_8);
-                String lang = languageDetectionService.detectLanguage(fileName).orElse(null);
-                String hash = DigestUtils.sha256Hex(content);
-
-                RepositoryFile rf = RepositoryFile.builder()
-                    .repository(repo)
-                    .project(repo.getProject())
-                    .filePath(relativePath)
-                    .fileName(fileName)
-                    .extension(getExtension(fileName))
-                    .language(lang)
-                    .sizeBytes(Files.size(filePath))
-                    .lineCount(content.split("\n", -1).length)
-                    .content(content)
-                    .contentHash(hash)
-                    .build();
-                repoFiles.add(rf);
-
-                if (lang != null && !languages.contains(lang)) {
-                    languages.add(lang);
-                }
-            } catch (Exception e) {
-                log.debug("Skipped file {}: {}", filePath, e.getMessage());
-            }
+            addRepositoryFile(repo, rootPath, filePath, repoFiles, languages);
         }
 
         repositoryFileRepository.saveAll(repoFiles);
+        updateRepositoryMetadata(repo, repoFiles, languages);
+        triggerRagIngestion(repo);
+    }
 
-        // Update repository metadata
+    private void addRepositoryFile(Repository repo, Path rootPath, Path filePath,
+                                  List<RepositoryFile> repoFiles, List<String> languages) {
+        try {
+            String relativePath = rootPath.relativize(filePath).toString().replace("\\", "/");
+            String fileName = filePath.getFileName().toString();
+
+            if (languageDetectionService.isBinaryExtension(fileName)) {
+                repoFiles.add(buildFile(repo, filePath, relativePath, null, true));
+                return;
+            }
+
+            if (Files.size(filePath) > 1024 * 1024) {
+                addLanguage(repoFiles, languages, repo, filePath, relativePath, fileName, null, false);
+                return;
+            }
+
+            String content = Files.readString(filePath, StandardCharsets.UTF_8);
+            String lang = languageDetectionService.detectLanguage(fileName).orElse(null);
+            String hash = DigestUtils.sha256Hex(content);
+
+            RepositoryFile rf = RepositoryFile.builder()
+                .repository(repo)
+                .project(repo.getProject())
+                .filePath(relativePath)
+                .fileName(fileName)
+                .extension(getExtension(fileName))
+                .language(lang)
+                .sizeBytes(Files.size(filePath))
+                .lineCount(content.split("\n", -1).length)
+                .content(content)
+                .contentHash(hash)
+                .build();
+            repoFiles.add(rf);
+            addLanguageIfPresent(languages, lang);
+        } catch (Exception e) {
+            log.debug("Skipped file {}: {}", filePath, e.getMessage());
+        }
+    }
+
+    private void addLanguage(List<RepositoryFile> repoFiles, List<String> languages, Repository repo,
+                             Path filePath, String relativePath, String fileName, String forcedLanguage,
+                             boolean binary) {
+        try {
+            String lang = forcedLanguage != null ? forcedLanguage : languageDetectionService.detectLanguage(fileName).orElse(null);
+            repoFiles.add(buildFile(repo, filePath, relativePath, lang, binary));
+            addLanguageIfPresent(languages, lang);
+        } catch (IOException e) {
+            log.debug("Unable to add language metadata for file {}: {}", filePath, e.getMessage());
+        }
+    }
+
+    private void addLanguageIfPresent(List<String> languages, String language) {
+        if (language != null && !languages.contains(language)) {
+            languages.add(language);
+        }
+    }
+
+    private void updateRepositoryMetadata(Repository repo, List<RepositoryFile> repoFiles, List<String> languages) {
         String primaryLanguage = repoFiles.stream()
             .map(RepositoryFile::getLanguage)
             .filter(Objects::nonNull)
@@ -276,6 +297,7 @@ public class RepositoryService {
             .max(Map.Entry.comparingByValue())
             .map(Map.Entry::getKey)
             .orElse(null);
+
         repo.setTotalFiles(repoFiles.size());
         repo.setLanguages(languages);
         repo.setPrimaryLanguage(primaryLanguage);
@@ -284,8 +306,9 @@ public class RepositoryService {
         repositoryRepo.save(repo);
 
         log.info("Indexed {} files for repository {}", repoFiles.size(), repo.getId());
+    }
 
-        // Automatically trigger RAG Ingestion (Chunking + Embedding + PGVector persistence)
+    private void triggerRagIngestion(Repository repo) {
         try {
             log.info("Triggering background RAG ingestion for repository {}", repo.getId());
             ingestionService.ingestRepositoryAsync(repo.getId());

@@ -144,28 +144,61 @@ public class UmlDiagramService {
         StringBuilder sb = new StringBuilder();
         sb.append("graph TD\n");
 
-        // Detect architectural layers from file paths
+        ArchitectureSnapshot snapshot = detectArchitectureLayers(parsedFiles);
+        addLayerBlock(sb, "Controllers", snapshot.controllers());
+        addLayerBlock(sb, "Services", snapshot.services());
+        addLayerBlock(sb, "Repositories", snapshot.repositories());
+        addLayerBlock(sb, "Models", snapshot.models());
+
+        addLayerConnection(sb, snapshot.controllers(), snapshot.services());
+        addLayerConnection(sb, snapshot.services(), snapshot.repositories());
+        addLayerConnection(sb, snapshot.repositories(), snapshot.models());
+
+        return sb.toString();
+    }
+
+    private ArchitectureSnapshot detectArchitectureLayers(List<ParsedFile> parsedFiles) {
         Set<String> controllers = new LinkedHashSet<>();
         Set<String> services = new LinkedHashSet<>();
         Set<String> repositories = new LinkedHashSet<>();
         Set<String> models = new LinkedHashSet<>();
 
-        for (ParsedFile file : parsedFiles) {
-            for (CodeElement element : file.getElements()) {
-                if (element.getType() != CodeElement.ElementType.CLASS
-                 && element.getType() != CodeElement.ElementType.INTERFACE) continue;
+        if (parsedFiles == null) {
+            return new ArchitectureSnapshot(controllers, services, repositories, models);
+        }
 
-                String name = element.getName();
-                if (element.getAnnotations() != null) {
-                    if (element.getAnnotations().stream().anyMatch(a -> a.contains("Controller") || a.contains("RestController")))
-                        controllers.add(name);
-                    else if (element.getAnnotations().stream().anyMatch(a -> a.contains("Service")))
-                        services.add(name);
-                    else if (element.getAnnotations().stream().anyMatch(a -> a.contains("Repository")))
-                        repositories.add(name);
+        for (ParsedFile file : parsedFiles) {
+            if (file == null) {
+                continue;
+            }
+
+            String filePath = file.getFilePath() == null ? "" : file.getFilePath().replace("\\", "/");
+            classifyByFilePath(filePath, controllers, services, repositories, models);
+
+            if (file.getElements() == null) {
+                continue;
+            }
+
+            for (CodeElement element : file.getElements()) {
+                if (element == null) continue;
+                if (element.getType() != CodeElement.ElementType.CLASS
+                    && element.getType() != CodeElement.ElementType.INTERFACE) {
+                    continue;
                 }
 
-                // Fallback: naming convention
+                String name = element.getName();
+                if (name == null || name.isBlank()) {
+                    continue;
+                }
+
+                if (hasAnnotation(element, "Controller", "RestController")) {
+                    controllers.add(name);
+                } else if (hasAnnotation(element, "Service")) {
+                    services.add(name);
+                } else if (hasAnnotation(element, "Repository")) {
+                    repositories.add(name);
+                }
+
                 if (name.endsWith("Controller")) controllers.add(name);
                 else if (name.endsWith("Service")) services.add(name);
                 else if (name.endsWith("Repository")) repositories.add(name);
@@ -173,39 +206,63 @@ public class UmlDiagramService {
             }
         }
 
-        if (!controllers.isEmpty()) {
-            sb.append("    subgraph Controllers\n");
-            controllers.stream().limit(8).forEach(c ->
-                sb.append("        ").append(sanitize(c)).append("[").append(c).append("]\n"));
-            sb.append("    end\n");
-        }
-        if (!services.isEmpty()) {
-            sb.append("    subgraph Services\n");
-            services.stream().limit(8).forEach(s ->
-                sb.append("        ").append(sanitize(s)).append("[").append(s).append("]\n"));
-            sb.append("    end\n");
-        }
-        if (!repositories.isEmpty()) {
-            sb.append("    subgraph Repositories\n");
-            repositories.stream().limit(8).forEach(r ->
-                sb.append("        ").append(sanitize(r)).append("[").append(r).append("]\n"));
-            sb.append("    end\n");
-        }
-
-        // Draw layer connections
-        if (!controllers.isEmpty() && !services.isEmpty()) {
-            String ctrl = sanitize(controllers.iterator().next());
-            String svc = sanitize(services.iterator().next());
-            sb.append("    ").append(ctrl).append(" --> ").append(svc).append("\n");
-        }
-        if (!services.isEmpty() && !repositories.isEmpty()) {
-            String svc = sanitize(services.iterator().next());
-            String repo = sanitize(repositories.iterator().next());
-            sb.append("    ").append(svc).append(" --> ").append(repo).append("\n");
-        }
-
-        return sb.toString();
+        return new ArchitectureSnapshot(controllers, services, repositories, models);
     }
+
+    private void classifyByFilePath(String filePath, Set<String> controllers, Set<String> services,
+                                   Set<String> repositories, Set<String> models) {
+        if (filePath == null || filePath.isBlank()) return;
+        String normalized = filePath.toLowerCase();
+
+        if (normalized.contains("/controller/") || normalized.endsWith("controller.java") || normalized.contains("controller")) {
+            String canonical = inferNameFromFilePath(filePath, "Controller");
+            if (canonical != null) controllers.add(canonical);
+        } else if (normalized.contains("/service/") || normalized.endsWith("service.java") || normalized.contains("service")) {
+            String canonical = inferNameFromFilePath(filePath, "Service");
+            if (canonical != null) services.add(canonical);
+        } else if (normalized.contains("/repository/") || normalized.endsWith("repository.java") || normalized.contains("repository")) {
+            String canonical = inferNameFromFilePath(filePath, "Repository");
+            if (canonical != null) repositories.add(canonical);
+        } else if (normalized.contains("/model/") || normalized.contains("/entity/") || normalized.contains("/domain/")) {
+            String canonical = inferNameFromFilePath(filePath, "Model");
+            if (canonical != null) models.add(canonical);
+        }
+    }
+
+    private String inferNameFromFilePath(String filePath, String suffix) {
+        String fileName = filePath.replace("\\", "/");
+        int idx = fileName.lastIndexOf('/');
+        String name = idx >= 0 ? fileName.substring(idx + 1) : fileName;
+        String base = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
+        return base.endsWith(suffix) ? base : null;
+    }
+
+    private boolean hasAnnotation(CodeElement element, String... annotationNames) {
+        if (element.getAnnotations() == null || element.getAnnotations().isEmpty()) return false;
+        return element.getAnnotations().stream()
+            .filter(a -> a != null)
+            .anyMatch(annotation -> java.util.Arrays.stream(annotationNames)
+                .anyMatch(name -> annotation.contains(name) || annotation.contains(name.toLowerCase())));
+    }
+
+    private void addLayerBlock(StringBuilder sb, String layerName, Set<String> nodes) {
+        if (nodes == null || nodes.isEmpty()) return;
+
+        sb.append("    subgraph ").append(layerName).append("\n");
+        nodes.stream().limit(8).forEach(node ->
+            sb.append("        ").append(sanitize(node)).append("[").append(node).append("]\n"));
+        sb.append("    end\n");
+    }
+
+    private void addLayerConnection(StringBuilder sb, Set<String> sourceNodes, Set<String> targetNodes) {
+        if (sourceNodes == null || targetNodes == null || sourceNodes.isEmpty() || targetNodes.isEmpty()) return;
+        String source = sanitize(sourceNodes.iterator().next());
+        String target = sanitize(targetNodes.iterator().next());
+        sb.append("    ").append(source).append(" --> ").append(target).append("\n");
+    }
+
+    private record ArchitectureSnapshot(Set<String> controllers, Set<String> services,
+                                       Set<String> repositories, Set<String> models) {}
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 

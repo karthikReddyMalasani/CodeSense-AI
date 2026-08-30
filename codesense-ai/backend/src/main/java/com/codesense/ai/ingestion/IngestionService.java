@@ -77,63 +77,64 @@ public class IngestionService {
 
         log.info("Starting ingestion for repository: {} ({})", repo.getName(), repositoryId);
 
-        // Clear existing chunks for re-ingestion
         vectorSearchService.deleteByRepository(repositoryId);
-
-        // Update status
         repo.setIngestionStatus(IngestionStatus.INGESTING);
         repositoryRepo.save(repo);
 
-        // Get all non-binary files with content
-        List<RepositoryFile> files = repositoryFileRepository
-            .findByRepositoryIdAndIgnoredFalse(repositoryId);
-
+        List<RepositoryFile> files = repositoryFileRepository.findByRepositoryIdAndIgnoredFalse(repositoryId);
         log.info("Ingesting {} files for repository: {}", files.size(), repositoryId);
 
         List<RepositoryChunk> batch = new ArrayList<>();
         int totalChunks = 0;
 
         for (RepositoryFile file : files) {
-            if (file.isBinary() || file.getContent() == null || file.getContent().isBlank()) {
-                continue;
-            }
-            if (!languageDetectionService.isSupportedSourceLanguage(file.getLanguage())) {
+            if (shouldSkipFile(file)) {
                 continue;
             }
 
             try {
-                List<RepositoryChunk> fileChunks = chunkingService.chunkByText(
-                    file.getContent(),
-                    repo,
-                    repo.getProject(),
-                    file,
-                    file.getFilePath(),
-                    file.getLanguage()
-                );
-
-                batch.addAll(fileChunks);
-
-                // Flush batch when full
-                if (batch.size() >= batchSize) {
-                    totalChunks += embedAndSaveBatch(batch);
-                    batch.clear();
-                }
+                totalChunks += processFileChunks(repo, file, batch);
             } catch (Exception e) {
                 log.warn("Failed to chunk file {}: {}", file.getFilePath(), e.getMessage());
             }
         }
 
-        // Flush remaining
         if (!batch.isEmpty()) {
             totalChunks += embedAndSaveBatch(batch);
         }
 
-        // Update repository with chunk count and status
+        finalizeIngestion(repo, totalChunks);
+    }
+
+    private boolean shouldSkipFile(RepositoryFile file) {
+        return file == null || file.isBinary() || file.getContent() == null || file.getContent().isBlank()
+            || !languageDetectionService.isSupportedSourceLanguage(file.getLanguage());
+    }
+
+    private int processFileChunks(Repository repo, RepositoryFile file, List<RepositoryChunk> batch) {
+        List<RepositoryChunk> fileChunks = chunkingService.chunkByText(
+            file.getContent(),
+            repo,
+            repo.getProject(),
+            file,
+            file.getFilePath(),
+            file.getLanguage()
+        );
+
+        batch.addAll(fileChunks);
+        if (batch.size() >= batchSize) {
+            int saved = embedAndSaveBatch(batch);
+            batch.clear();
+            return saved;
+        }
+        return 0;
+    }
+
+    private void finalizeIngestion(Repository repo, int totalChunks) {
         repo.setTotalChunks(totalChunks);
         repo.setIngestionStatus(IngestionStatus.COMPLETED);
         repositoryRepo.save(repo);
-
-        log.info("Ingestion complete for repository {}: {} chunks created", repositoryId, totalChunks);
+        log.info("Ingestion complete for repository {}: {} chunks created", repo.getId(), totalChunks);
     }
 
     /**

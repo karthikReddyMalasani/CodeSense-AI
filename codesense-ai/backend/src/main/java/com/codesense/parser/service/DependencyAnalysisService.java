@@ -33,86 +33,103 @@ public class DependencyAnalysisService {
      */
     public DependencyGraph buildDependencyGraph(List<ParsedFile> parsedFiles) {
         Graph<String, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
-
         Set<String> nodes = new LinkedHashSet<>();
+        Set<String> seenEdges = new HashSet<>();
         List<DependencyEdge> edges = new ArrayList<>();
 
         if (parsedFiles == null || parsedFiles.isEmpty()) {
-            return DependencyGraph.builder()
-                .nodes(List.of())
-                .edges(List.of())
-                .topDependencies(List.of())
-                .nodeCount(0)
-                .edgeCount(0)
-                .build();
+            return emptyGraph();
         }
 
         for (ParsedFile file : parsedFiles) {
             if (file == null) continue;
-            // Add file as a node
-            String filePath = file.getFilePath();
-            if (filePath != null && !filePath.isBlank()) {
-                nodes.add(filePath);
-                graph.addVertex(filePath);
-            }
-
-            // Add class/module nodes
-            List<CodeElement> fileElements = file.getElements() != null ? file.getElements() : List.of();
-            for (CodeElement element : fileElements) {
-                if (element == null) continue;
-                if (isTopLevelElement(element)) {
-                    String nodeName = element.getName();
-                    if (nodeName == null || nodeName.isBlank()) continue;
-                    nodes.add(nodeName);
-                    if (!graph.containsVertex(nodeName)) graph.addVertex(nodeName);
-                }
-            }
-
-            // Add relationship edges
-            List<CodeRelationship> fileRelationships = file.getRelationships() != null ? file.getRelationships() : List.of();
-            for (CodeRelationship rel : fileRelationships) {
-                if (rel == null) continue;
-                String src = rel.getSourceElement();
-                String tgt = rel.getTargetElement();
-                if (src != null && !src.isBlank() && tgt != null && !tgt.isBlank()) {
-                    nodes.add(src);
-                    nodes.add(tgt);
-                    if (!graph.containsVertex(src)) graph.addVertex(src);
-                    if (!graph.containsVertex(tgt)) graph.addVertex(tgt);
-                    try {
-                        DefaultEdge added = graph.addEdge(src, tgt);
-                        if (added != null) {
-                            edges.add(DependencyEdge.builder()
-                                .source(src).target(tgt)
-                                .type(rel.getType() != null ? rel.getType().name() : "DEPENDS_ON")
-                                .build());
-                        }
-                    } catch (IllegalArgumentException ex) {
-                        log.debug("Skipping invalid dependency edge {} -> {}: {}", src, tgt, ex.getMessage());
-                    }
-                }
-            }
+            addFileNode(nodes, graph, file.getFilePath());
+            addTopLevelElementNodes(nodes, graph, file.getElements());
+            addRelationshipEdges(nodes, graph, edges, seenEdges, file.getRelationships());
         }
 
-        // Compute statistics
+        return DependencyGraph.builder()
+            .nodes(new ArrayList<>(nodes))
+            .edges(edges)
+            .topDependencies(buildTopDependencies(graph))
+            .nodeCount(graph.vertexSet().size())
+            .edgeCount(graph.edgeSet().size())
+            .build();
+    }
+
+    private DependencyGraph emptyGraph() {
+        return DependencyGraph.builder()
+            .nodes(List.of())
+            .edges(List.of())
+            .topDependencies(List.of())
+            .nodeCount(0)
+            .edgeCount(0)
+            .build();
+    }
+
+    private void addFileNode(Set<String> nodes, Graph<String, DefaultEdge> graph, String filePath) {
+        if (filePath == null || filePath.isBlank()) return;
+        nodes.add(filePath);
+        graph.addVertex(filePath);
+    }
+
+    private void addTopLevelElementNodes(Set<String> nodes, Graph<String, DefaultEdge> graph, List<CodeElement> fileElements) {
+        if (fileElements == null) return;
+        for (CodeElement element : fileElements) {
+            if (element == null || !isTopLevelElement(element)) continue;
+            String nodeName = element.getName();
+            if (nodeName == null || nodeName.isBlank()) continue;
+            nodes.add(nodeName);
+            if (!graph.containsVertex(nodeName)) graph.addVertex(nodeName);
+        }
+    }
+
+    private void addRelationshipEdges(Set<String> nodes, Graph<String, DefaultEdge> graph,
+                                     List<DependencyEdge> edges, Set<String> seenEdges,
+                                     List<CodeRelationship> fileRelationships) {
+        if (fileRelationships == null) return;
+
+        for (CodeRelationship rel : fileRelationships) {
+            if (rel == null) continue;
+            String src = rel.getSourceElement();
+            String tgt = rel.getTargetElement();
+            if (src == null || src.isBlank() || tgt == null || tgt.isBlank()) continue;
+
+            nodes.add(src);
+            nodes.add(tgt);
+            if (!graph.containsVertex(src)) graph.addVertex(src);
+            if (!graph.containsVertex(tgt)) graph.addVertex(tgt);
+
+            String edgeKey = src + "->" + tgt + "::" + (rel.getType() != null ? rel.getType().name() : "DEPENDS_ON");
+            if (seenEdges.contains(edgeKey)) continue;
+
+            try {
+                DefaultEdge added = graph.addEdge(src, tgt);
+                if (added != null) {
+                    edges.add(DependencyEdge.builder()
+                        .source(src)
+                        .target(tgt)
+                        .type(rel.getType() != null ? rel.getType().name() : "DEPENDS_ON")
+                        .build());
+                    seenEdges.add(edgeKey);
+                }
+            } catch (IllegalArgumentException ex) {
+                log.debug("Skipping invalid dependency edge {} -> {}: {}", src, tgt, ex.getMessage());
+            }
+        }
+    }
+
+    private List<String> buildTopDependencies(Graph<String, DefaultEdge> graph) {
         Map<String, Integer> inDegree = new HashMap<>();
         for (String node : graph.vertexSet()) {
             inDegree.put(node, graph.inDegreeOf(node));
         }
 
-        List<String> topNodes = inDegree.entrySet().stream()
+        return inDegree.entrySet().stream()
             .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
             .limit(10)
             .map(Map.Entry::getKey)
             .collect(Collectors.toList());
-
-        return DependencyGraph.builder()
-            .nodes(new ArrayList<>(nodes))
-            .edges(edges)
-            .topDependencies(topNodes)
-            .nodeCount(graph.vertexSet().size())
-            .edgeCount(graph.edgeSet().size())
-            .build();
     }
 
     /**
