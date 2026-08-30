@@ -37,16 +37,30 @@
   --cs-btn-secondary-hover: #f8fafc;
 }
 
+html[data-theme='dark'],
+body[data-theme='dark'],
+:root[data-theme='dark'],
 [data-theme='dark'] {
   --cs-bg-main: #0f172a;
   --cs-bg-card: #1e293b;
+  --cs-sidebar-bg: #0b0f19;
+  --cs-sidebar-hover: #1e293b;
+  --cs-sidebar-text: #cbd5e1;
+  --cs-sidebar-header: #94a3b8;
+  --cs-sidebar-border: #334155;
   --cs-text-main: #f8fafc;
   --cs-text-muted: #94a3b8;
+  --cs-text-light: #cbd5e1;
   --cs-border-color: #334155;
   --cs-border-hover: #475569;
   --cs-input-bg: #0f172a;
   --cs-btn-secondary-bg: #1e293b;
   --cs-btn-secondary-hover: #0f172a;
+  --bg-hover: #1e293b;
+  --bg-secondary: #111827;
+  --bg-tertiary: #0f172a;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
 }
 
 * {
@@ -65,6 +79,12 @@ body {
   min-height: 100vh;
   width: 100%;
   -webkit-font-smoothing: antialiased;
+}
+
+html[data-theme='dark'] body,
+body[data-theme='dark'] {
+  background: var(--cs-bg-main);
+  color: var(--cs-text-main);
 }
 
 /* ==========================================================================
@@ -1688,6 +1708,8 @@ select.input option {
   --bg-surface: var(--cs-bg-main);
   --bg-card: var(--cs-bg-card);
   --bg-hover: #f1f5f9;
+  --bg-secondary: #e2e8f0;
+  --bg-tertiary: #f8fafc;
   --border-color: var(--cs-border-color);
   --accent-color: var(--cs-primary);
   --primary: var(--cs-primary);
@@ -1698,6 +1720,19 @@ select.input option {
   --radius-sm: var(--cs-radius-sm);
   --font-mono: 'Fira Code', Consolas, monospace;
   --shadow-card: var(--cs-shadow-md);
+}
+
+html[data-theme='dark'] {
+  --text-muted: var(--cs-text-muted);
+  --text: var(--cs-text-main);
+  --text-primary: var(--cs-text-main);
+  --text-secondary: var(--cs-text-muted);
+  --bg-surface: var(--cs-bg-main);
+  --bg-card: var(--cs-bg-card);
+  --bg-hover: #1e293b;
+  --bg-secondary: #111827;
+  --bg-tertiary: #0f172a;
+  --border-color: var(--cs-border-color);
 }
 
 /* Code & Monospace */

@@ -10,6 +10,7 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('codeassist_theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
