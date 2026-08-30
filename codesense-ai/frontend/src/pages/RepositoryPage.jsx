@@ -103,26 +103,36 @@ export default function RepositoryPage() {
   const toggleFolderExpand = (folderPath) => {
     setExpandedFolders(prev => ({
       ...prev,
-      [folderPath]: prev[folderPath] === undefined ? false : !prev[folderPath]
+      [folderPath]: prev[folderPath] === false ? true : false
     }));
   };
 
-  // Build hierarchical folder structure
+  // Build hierarchical folder structure supporting both / and \ delimiters
   const buildFolderTree = (files) => {
     const tree = {};
     files.forEach(file => {
-      const pathStr = file.filePath || file.path || file.fileName || '';
-      const parts = pathStr.split('/').filter(Boolean);
+      // Normalize slashes (windows backslashes vs unix forward slashes)
+      const rawPath = file.filePath || file.path || file.name || file.fileName || '';
+      const normalizedPath = rawPath.replace(/\\/g, '/');
+      const parts = normalizedPath.split('/').filter(Boolean);
+
       let current = tree;
-      parts.forEach((part, idx) => {
-        if (idx === parts.length - 1) {
-          if (!current._files) current._files = [];
-          current._files.push(file);
-        } else {
-          if (!current[part]) current[part] = {};
-          current = current[part];
-        }
-      });
+      if (parts.length === 1) {
+        // File directly in root
+        if (!current._files) current._files = [];
+        current._files.push({ ...file, fileName: parts[0] });
+      } else {
+        parts.forEach((part, idx) => {
+          if (idx === parts.length - 1) {
+            if (!current._files) current._files = [];
+            current._files.push({ ...file, fileName: part });
+          } else {
+            // Case-insensitive / clean folder name
+            if (!current[part]) current[part] = {};
+            current = current[part];
+          }
+        });
+      }
     });
     return tree;
   };
@@ -136,8 +146,8 @@ export default function RepositoryPage() {
     // Render folders
     folders.forEach(folderName => {
       const folderPath = currentPath ? `${currentPath}/${folderName}` : folderName;
-      // Default to expanded for top-level folders, or check state
-      const isExpanded = expandedFolders[folderPath] !== undefined ? expandedFolders[folderPath] : true;
+      // Default to expanded (true) unless explicitly set to false
+      const isExpanded = expandedFolders[folderPath] !== false;
 
       items.push(
         <div key={`folder-${folderPath}`}>
@@ -149,7 +159,7 @@ export default function RepositoryPage() {
               gap: '6px',
               fontSize: '12px',
               fontWeight: '700',
-              padding: `6px 8px 6px ${depth * 12 + 8}px`,
+              padding: `6px 8px 6px ${depth * 14 + 8}px`,
               color: 'var(--text-muted)',
               borderRadius: '4px',
               cursor: 'pointer',
@@ -159,7 +169,7 @@ export default function RepositoryPage() {
             }}
             className="folder-tree-header"
           >
-            <span style={{ fontSize: '11px', width: '12px', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: '10px', width: '12px', color: 'var(--primary-light)' }}>
               {isExpanded ? '▼' : '►'}
             </span>
             <span style={{ fontSize: '14px' }}>
