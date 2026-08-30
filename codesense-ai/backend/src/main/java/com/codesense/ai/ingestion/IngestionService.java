@@ -22,8 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * AI Engine — Repository Ingestion Pipeline.
@@ -158,16 +161,20 @@ public class IngestionService {
 
         List<RepositoryChunk> batch = new ArrayList<>();
         int totalChunks = 0;
+        Map<String, RepositoryFile> filesByPath = repositoryFileRepository
+            .findByRepositoryIdAndIgnoredFalse(repositoryId)
+            .stream()
+            .collect(Collectors.toMap(
+                RepositoryFile::getFilePath,
+                Function.identity(),
+                (first, ignored) -> first
+            ));
 
         for (ParsedFileDTO parsedFile : parsedRepository.getFiles()) {
-            Optional<RepositoryFile> repoFile = repositoryFileRepository
-                .findByRepositoryIdAndIgnoredFalse(repositoryId)
-                .stream()
-                .filter(f -> f.getFilePath().equals(parsedFile.getFilePath()))
-                .findFirst();
+            RepositoryFile repoFile = filesByPath.get(parsedFile.getFilePath());
 
             List<RepositoryChunk> fileChunks = chunkingService.chunkFromParserMetadata(
-                parsedFile, repo, repo.getProject(), repoFile.orElse(null));  // null safe — RepositoryChunk.file is nullable
+                parsedFile, repo, repo.getProject(), repoFile);  // null safe — RepositoryChunk.file is nullable
 
             batch.addAll(fileChunks);
             if (batch.size() >= batchSize) {

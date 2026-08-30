@@ -79,7 +79,7 @@ class RagServiceTest {
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(mockUser));
         when(repositoryRepo.findById(repositoryId)).thenReturn(Optional.of(mockRepo));
         when(conversationRepository.save(any())).thenReturn(savedConv);
-        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(any())).thenReturn(List.of());
+        when(messageRepository.findTop6ByConversationIdOrderByCreatedAtDesc(any())).thenReturn(new ArrayList<>());
 
         RepositoryChunk chunk = new RepositoryChunk();
         chunk.setFilePath("src/Auth.java");
@@ -120,7 +120,7 @@ class RagServiceTest {
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(mockUser));
         when(repositoryRepo.findById(repositoryId)).thenReturn(Optional.of(mockRepo));
         when(conversationRepository.save(any())).thenReturn(savedConv);
-        when(messageRepository.findByConversationIdOrderByCreatedAtAsc(any())).thenReturn(List.of());
+        when(messageRepository.findTop6ByConversationIdOrderByCreatedAtDesc(any())).thenReturn(new ArrayList<>());
         when(vectorSearchService.semanticSearch(any(), any(), any(), anyInt())).thenReturn(List.of());
         when(promptTemplates.repositoryChat(any(), any(), any())).thenReturn("prompt");
         when(llmService.generate(any())).thenReturn(

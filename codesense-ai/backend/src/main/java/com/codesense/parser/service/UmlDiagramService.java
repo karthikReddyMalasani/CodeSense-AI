@@ -6,8 +6,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -37,14 +39,15 @@ public class UmlDiagramService {
         sb.append("skinparam classAttributeIconSize 0\n\n");
 
         for (ParsedFile file : parsedFiles) {
+            Map<String, List<CodeElement>> membersByParent = indexMembers(file.getElements());
             for (CodeElement element : file.getElements()) {
                 if (element.getType() == CodeElement.ElementType.CLASS) {
                     sb.append("class ").append(sanitize(element.getName())).append(" {\n");
-                    appendClassMembers(sb, element, file.getElements());
+                    appendClassMembers(sb, element, membersByParent);
                     sb.append("}\n\n");
                 } else if (element.getType() == CodeElement.ElementType.INTERFACE) {
                     sb.append("interface ").append(sanitize(element.getName())).append(" {\n");
-                    appendClassMembers(sb, element, file.getElements());
+                    appendClassMembers(sb, element, membersByParent);
                     sb.append("}\n\n");
                 } else if (element.getType() == CodeElement.ElementType.ENUM) {
                     sb.append("enum ").append(sanitize(element.getName())).append("\n\n");
@@ -108,13 +111,14 @@ public class UmlDiagramService {
         Set<String> addedClasses = new LinkedHashSet<>();
 
         for (ParsedFile file : parsedFiles) {
+            Map<String, List<CodeElement>> membersByParent = indexMembers(file.getElements());
             for (CodeElement element : file.getElements()) {
                 if ((element.getType() == CodeElement.ElementType.CLASS
                   || element.getType() == CodeElement.ElementType.INTERFACE)
                   && !addedClasses.contains(element.getName())) {
                     addedClasses.add(element.getName());
                     sb.append("    class ").append(sanitize(element.getName())).append(" {\n");
-                    appendMermaidMembers(sb, element, file.getElements());
+                    appendMermaidMembers(sb, element, membersByParent);
                     sb.append("    }\n");
                 }
             }
@@ -266,11 +270,9 @@ public class UmlDiagramService {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private void appendClassMembers(StringBuilder sb, CodeElement cls, List<CodeElement> all) {
-        all.stream()
-            .filter(e -> cls.getName().equals(e.getParentName()))
-            .filter(e -> e.getType() == CodeElement.ElementType.METHOD
-                      || e.getType() == CodeElement.ElementType.FIELD)
+    private void appendClassMembers(StringBuilder sb, CodeElement cls,
+                                    Map<String, List<CodeElement>> membersByParent) {
+        membersByParent.getOrDefault(cls.getName(), List.of()).stream()
             .limit(10)
             .forEach(m -> {
                 if (m.getType() == CodeElement.ElementType.FIELD) {
@@ -282,11 +284,9 @@ public class UmlDiagramService {
             });
     }
 
-    private void appendMermaidMembers(StringBuilder sb, CodeElement cls, List<CodeElement> all) {
-        all.stream()
-            .filter(e -> cls.getName().equals(e.getParentName()))
-            .filter(e -> e.getType() == CodeElement.ElementType.METHOD
-                      || e.getType() == CodeElement.ElementType.FIELD)
+    private void appendMermaidMembers(StringBuilder sb, CodeElement cls,
+                                      Map<String, List<CodeElement>> membersByParent) {
+        membersByParent.getOrDefault(cls.getName(), List.of()).stream()
             .limit(8)
             .forEach(m -> {
                 if (m.getType() == CodeElement.ElementType.FIELD) {
@@ -296,6 +296,22 @@ public class UmlDiagramService {
                     sb.append("        +").append(m.getName()).append("()\n");
                 }
             });
+    }
+
+    private Map<String, List<CodeElement>> indexMembers(List<CodeElement> elements) {
+        if (elements == null || elements.isEmpty()) {
+            return Map.of();
+        }
+
+        return elements.stream()
+            .filter(element -> element.getParentName() != null)
+            .filter(element -> element.getType() == CodeElement.ElementType.METHOD
+                            || element.getType() == CodeElement.ElementType.FIELD)
+            .collect(Collectors.groupingBy(
+                CodeElement::getParentName,
+                java.util.LinkedHashMap::new,
+                Collectors.toCollection(ArrayList::new)
+            ));
     }
 
     private String sanitize(String name) {

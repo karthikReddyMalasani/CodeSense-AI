@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -83,7 +84,7 @@ public class RagService {
                 .build();
         }
 
-        Conversation conversation = getOrCreateConversation(userEmail, request);
+        Conversation conversation = getOrCreateConversation(userEmail, request, repository);
         String history = buildConversationHistory(conversation);
         List<RepositoryChunk> relevantChunks = searchRelevantChunks(projectId, repositoryId, request.getQuestion());
         String context = buildContext(relevantChunks);
@@ -140,11 +141,9 @@ public class RagService {
     // ─── Private helpers ─────────────────────────────────────────────────────
 
     @Transactional
-    private Conversation getOrCreateConversation(String userEmail, ChatRequestDto request) {
+    private Conversation getOrCreateConversation(String userEmail, ChatRequestDto request, Repository repo) {
         User user = userRepository.findByEmail(userEmail)
             .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userEmail));
-        Repository repo = repositoryRepo.findById(request.getRepositoryId())
-            .orElseThrow(() -> new ResourceNotFoundException("Repository", request.getRepositoryId().toString()));
 
         if (request.getConversationId() != null) {
             return conversationRepository.findByIdAndUserId(request.getConversationId(), user.getId())
@@ -169,15 +168,13 @@ public class RagService {
 
     private String buildConversationHistory(Conversation conversation) {
         List<ConversationMessage> messages = messageRepository
-            .findByConversationIdOrderByCreatedAtAsc(conversation.getId());
+            .findTop6ByConversationIdOrderByCreatedAtDesc(conversation.getId());
 
         if (messages.isEmpty()) return "";
 
-        // Use last 6 messages for context window
-        List<ConversationMessage> recent = messages.size() > 6
-            ? messages.subList(messages.size() - 6, messages.size()) : messages;
+        Collections.reverse(messages);
 
-        return recent.stream()
+        return messages.stream()
             .map(m -> m.getRole().name() + ": " + m.getContent())
             .collect(Collectors.joining("\n"));
     }
