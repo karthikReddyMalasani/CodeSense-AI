@@ -86,7 +86,8 @@ public interface RepositoryChunkRepository extends JpaRepository<RepositoryChunk
 
     @Modifying
     @Transactional
-    void deleteByRepositoryId(UUID repositoryId);
+    @Query("delete from RepositoryChunk chunk where chunk.repository.id = :repositoryId")
+    void deleteByRepositoryId(@Param("repositoryId") UUID repositoryId);
 
     @Modifying
     @Transactional
