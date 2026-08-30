@@ -64,6 +64,7 @@ public class IngestionService {
      * Called after ZIP extraction or GitHub clone completes.
      */
     @Async("ingestionTaskExecutor")
+    @Transactional
     public void ingestRepositoryAsync(UUID repositoryId) {
         try {
             ingestRepository(repositoryId);
@@ -88,7 +89,7 @@ public class IngestionService {
     }
 
     private void ingestRepositoryLocked(UUID repositoryId) {
-        Repository repo = repositoryRepo.findById(repositoryId)
+        Repository repo = repositoryRepo.findByIdForUpdate(repositoryId)
             .orElseThrow(() -> new IngestionException("Repository not found: " + repositoryId));
 
         log.info("Starting ingestion for repository: {} ({})", repo.getName(), repositoryId);

@@ -60,7 +60,7 @@ class IngestionServiceTest {
 
     @Test
     void ingestRepository_skipsWhenNoFiles() {
-        when(repositoryRepo.findById(repositoryId)).thenReturn(Optional.of(mockRepo));
+        when(repositoryRepo.findByIdForUpdate(repositoryId)).thenReturn(Optional.of(mockRepo));
         when(repositoryRepo.save(any())).thenReturn(mockRepo);
         doNothing().when(vectorSearchService).deleteByRepository(repositoryId);
         when(repositoryFileRepository.findByRepositoryIdAndIgnoredFalse(repositoryId))
@@ -75,7 +75,7 @@ class IngestionServiceTest {
 
     @Test
     void ingestRepository_generatesEmbeddingsForTextFiles() {
-        when(repositoryRepo.findById(repositoryId)).thenReturn(Optional.of(mockRepo));
+        when(repositoryRepo.findByIdForUpdate(repositoryId)).thenReturn(Optional.of(mockRepo));
         when(repositoryRepo.save(any())).thenReturn(mockRepo);
         doNothing().when(vectorSearchService).deleteByRepository(repositoryId);
 
@@ -111,7 +111,7 @@ class IngestionServiceTest {
 
     @Test
     void ingestRepository_throwsWhenRepoNotFound() {
-        when(repositoryRepo.findById(repositoryId)).thenReturn(Optional.empty());
+        when(repositoryRepo.findByIdForUpdate(repositoryId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> ingestionService.ingestRepository(repositoryId))
             .isInstanceOf(IngestionException.class);

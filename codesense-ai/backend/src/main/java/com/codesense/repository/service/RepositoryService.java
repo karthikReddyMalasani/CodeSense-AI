@@ -216,6 +216,7 @@ public class RepositoryService {
     // ─── Internal ────────────────────────────────────────────────────────
 
     @Async("ingestionTaskExecutor")
+    @Transactional
     public void extractAndIndexZipAsync(UUID repositoryId, MultipartFile file) {
         try {
             Repository repo = repositoryRepo.findById(repositoryId).orElseThrow();
@@ -229,6 +230,7 @@ public class RepositoryService {
     }
 
     @Async("ingestionTaskExecutor")
+    @Transactional
     public void cloneAndIndexGitHubAsync(UUID repositoryId, GitHubImportRequest request) {
         try {
             Repository repo = repositoryRepo.findById(repositoryId).orElseThrow();
@@ -246,13 +248,14 @@ public class RepositoryService {
         ReentrantLock lock = processingLock.forRepository(repositoryId);
         lock.lock();
         try {
-            Repository repo = repositoryRepo.findById(repositoryId).orElseThrow();
             GitHubImportRequest request = new GitHubImportRequest();
-            request.setGithubUrl(repo.getGithubUrl());
-            request.setBranch(repo.getDefaultBranch());
+            Repository existingRepo = repositoryRepo.findById(repositoryId).orElseThrow();
+            request.setGithubUrl(existingRepo.getGithubUrl());
+            request.setBranch(existingRepo.getDefaultBranch());
 
             Path refreshed = gitHubService.cloneRepository(request, repositoryId);
             new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                Repository repo = repositoryRepo.findByIdForUpdate(repositoryId).orElseThrow();
                 repositoryFileRepository.deleteByRepositoryId(repositoryId);
                 repo.setLocalPath(refreshed.toAbsolutePath().toString());
                 try {
