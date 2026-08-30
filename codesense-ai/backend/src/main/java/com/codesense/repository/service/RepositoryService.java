@@ -15,9 +15,10 @@ import com.codesense.repository.repository.RepositoryRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -52,8 +53,9 @@ public class RepositoryService {
     private final GitHubService gitHubService;
     private final LanguageDetectionService languageDetectionService;
     private final IngestionService ingestionService;
+    @Autowired
     @Qualifier("ingestionTaskExecutor")
-    private final Executor ingestionExecutor;
+    private Executor ingestionExecutor;
 
     @Transactional
     public RepositoryDto uploadZip(String email, UUID projectId, MultipartFile file, UploadRepositoryRequest request) {
