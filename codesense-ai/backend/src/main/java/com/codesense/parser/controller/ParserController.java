@@ -4,6 +4,7 @@ import com.codesense.common.dto.ApiResponse;
 import com.codesense.integration.parser.dto.ParsedRepositoryDTO;
 import com.codesense.parser.service.CodeMetricsService;
 import com.codesense.parser.service.ArchitectureAnalysisService;
+import com.codesense.parser.service.DependencyGraphAnalysisService;
 import com.codesense.parser.service.DependencyAnalysisService;
 import com.codesense.parser.service.RepositoryParserService;
 import com.codesense.parser.service.UmlDiagramService;
@@ -47,6 +48,7 @@ public class ParserController {
     private final ArchitectureAnalysisService architectureAnalysisService;
     private final RepositoryRepo repositoryRepo;
     private final UserRepository userRepository;
+    private final DependencyGraphAnalysisService dependencyGraphAnalysisService;
 
     @PostMapping("/repositories/{repositoryId}/parse")
     @Operation(summary = "Parse all files in a repository (JavaParser + Tree-sitter)")
@@ -156,6 +158,25 @@ public class ParserController {
         if (userId == null || repositoryRepo.findByIdAndProjectUserId(repositoryId, userId).isEmpty()) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Repository access denied");
         }
+    }
+
+    @PostMapping("/repositories/{repositoryId}/dependency-analysis")
+    @Operation(summary = "Start evidence-backed dependency graph analysis")
+    public ResponseEntity<ApiResponse<DependencyGraphAnalysisService.View>> startDependencyAnalysis(
+            @PathVariable UUID repositoryId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        requireRepositoryAccess(repositoryId, userDetails);
+        return ResponseEntity.accepted().body(ApiResponse.success(dependencyGraphAnalysisService.start(repositoryId)));
+    }
+
+    @GetMapping("/repositories/{repositoryId}/dependency-analysis/{jobId}")
+    @Operation(summary = "Get dependency graph analysis progress or result")
+    public ResponseEntity<ApiResponse<DependencyGraphAnalysisService.View>> getDependencyAnalysis(
+            @PathVariable UUID repositoryId,
+            @PathVariable UUID jobId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        requireRepositoryAccess(repositoryId, userDetails);
+        return ResponseEntity.ok(ApiResponse.success(dependencyGraphAnalysisService.get(repositoryId, jobId)));
     }
 
     // ─── Helper mappers ──────────────────────────────────────────────────────

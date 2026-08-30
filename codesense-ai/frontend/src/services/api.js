@@ -136,6 +136,8 @@ export const parserApi = {
     const url = direction ? `/api/parser/repositories/${repositoryId}/dependency-graph?direction=${encodeURIComponent(direction)}` : `/api/parser/repositories/${repositoryId}/dependency-graph`;
     return api.post(url);
   },
+  startDependencyAnalysis: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/dependency-analysis`),
+  getDependencyAnalysis: (repositoryId, jobId) => api.get(`/api/parser/repositories/${repositoryId}/dependency-analysis/${jobId}`),
   getUmlDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/uml`),
   getArchitectureDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture`),
   startArchitectureAnalysis: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture-analysis`),

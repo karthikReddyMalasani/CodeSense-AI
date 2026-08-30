@@ -1,153 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, Check, Circle, Crosshair, Filter, GitBranch, Loader2, RefreshCw, Search, X } from 'lucide-react';
 import { useLocation, useParams } from 'react-router-dom';
 import { repositoryApi, parserApi } from '../services/api';
 import ProjectSubNav from '../components/common/ProjectSubNav';
 
+const STAGES = ['Reading project structure', 'Detecting project type', 'Detecting programming languages', 'Reading dependency configuration', 'Scanning source files', 'Identifying modules/packages', 'Identifying classes/components', 'Extracting imports', 'Extracting exports', 'Resolving internal dependencies', 'Resolving external dependencies', 'Building dependency relationships', 'Detecting circular dependencies', 'Detecting highly coupled modules', 'Calculating dependency metrics', 'Building dependency graph', 'Organizing graph hierarchy', 'Generating dependency analysis', 'Rendering interactive graph', 'Finalizing report'];
+const filters = ['ALL', 'INTERNAL', 'EXTERNAL', 'FRONTEND', 'BACKEND', 'DATABASE', 'FRAMEWORK', 'AI'];
+
+function StageIcon({ state }) { return state === 'done' ? <Check size={13} /> : state === 'active' ? <Loader2 size={13} className="dependency-spin" /> : state === 'failed' ? <X size={13} /> : <Circle size={10} />; }
+
+function Progress({ job, repo, onRetry }) {
+  const progress = job ? Math.round((job.completedStages / job.totalStages) * 100) : 0;
+  const running = job?.status === 'RUNNING' || job?.status === 'QUEUED';
+  return <section className={`dependency-progress card ${job?.status === 'FAILED' ? 'dependency-failed' : ''}`}><div className="dependency-progress-head"><div><span className="eyebrow">{job?.status === 'FAILED' ? 'Analysis stopped' : 'Deep dependency analysis'}</span><h2>{repo?.name || 'Repository'}</h2><p>{job?.status === 'FAILED' ? job.error : running ? 'Resolving actual source relationships. Navigation is locked until this run completes.' : 'Preparing dependency analysis...'}</p></div><strong>{progress}<small>%</small></strong></div>{running && <div className="dependency-progress-track"><i style={{ width: `${progress}%` }} /></div>}{job?.status === 'FAILED' && <button className="btn btn-primary" onClick={onRetry}><RefreshCw size={15} /> Retry analysis</button>}<div className="dependency-stage-list">{STAGES.map((stage, index) => { const state = index < (job?.completedStages || 0) ? 'done' : index === (job?.completedStages || 0) && running ? 'active' : 'pending'; return <div className={`dependency-stage ${state}`} key={stage}><span><StageIcon state={state} /></span>{stage}<small>{state === 'done' ? 'Complete' : state === 'active' ? 'Analyzing' : ''}</small></div>; })}</div></section>;
+}
+
+function GraphPanel({ result }) {
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('ALL');
+  const [level, setLevel] = useState('ALL');
+  const [selected, setSelected] = useState(null);
+  const [scale, setScale] = useState(1);
+  const nodes = result.nodes || [];
+  const edges = result.edges || [];
+  const visible = useMemo(() => nodes.filter(node => { const haystack = `${node.name} ${node.path || ''} ${node.module || ''}`.toLowerCase(); const matchesQuery = !query || haystack.includes(query.toLowerCase()); const matchesLevel = level === 'ALL' || (level === 'FILE' ? node.type === 'FILE' : level === 'CLASS' ? ['CLASS', 'INTERFACE', 'COMPONENT'].includes(node.type) : node.type === level); const matchesFilter = filter === 'ALL' || (filter === 'EXTERNAL' ? node.external : filter === 'INTERNAL' ? !node.external : haystack.includes(filter.toLowerCase())); return matchesQuery && matchesLevel && matchesFilter; }), [nodes, query, filter, level]);
+  const visibleIds = new Set(visible.map(node => node.id));
+  const selectedNode = nodes.find(node => node.id === selected);
+  const selectedEdges = selected ? edges.filter(edge => edge.source === selected || edge.target === selected) : [];
+  const mermaid = `graph LR\n${edges.slice(0, 100).map(edge => `  ${edge.source.replace(/[^A-Za-z0-9_]/g, '_')} --> ${edge.target.replace(/[^A-Za-z0-9_]/g, '_')}`).join('\n')}`;
+  return <><div className="dependency-toolbar"><div className="dependency-search"><Search size={15} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search files, classes, modules..." /></div><select value={level} onChange={event => setLevel(event.target.value)}><option value="ALL">All levels</option><option value="FILE">Files</option><option value="CLASS">Classes / components</option></select><div className="dependency-filters">{filters.map(item => <button className={filter === item ? 'active' : ''} key={item} onClick={() => setFilter(item)}><Filter size={12} />{item[0] + item.slice(1).toLowerCase()}</button>)}</div><button className="icon-button" onClick={() => setScale(1)} title="Reset view"><Crosshair size={16} /></button><button className="icon-button" onClick={() => setScale(Math.min(scale + .1, 1.8))} title="Zoom in">+</button><button className="icon-button" onClick={() => setScale(Math.max(scale - .1, .6))} title="Zoom out">−</button></div><div className="dependency-workspace"><div className="dependency-canvas"><div className="dependency-canvas-inner" style={{ transform: `scale(${scale})` }}>{visible.length ? visible.map(node => <button key={node.id} className={`dependency-node ${node.external ? 'external' : ''} ${selected === node.id ? 'selected' : ''} ${selected && selected !== node.id ? 'dimmed' : ''}`} onClick={() => setSelected(node.id)}><span>{node.type === 'FILE' ? 'F' : node.external ? 'E' : 'C'}</span><strong>{node.name}</strong><small>{node.module || node.type}</small></button>) : <div className="dependency-no-results">No nodes match the current filters.</div>}</div></div><aside className="dependency-details">{selectedNode ? <><div className="dependency-detail-title"><span className="eyebrow">Selected node</span><button onClick={() => setSelected(null)}><X size={15} /></button><h3>{selectedNode.name}</h3><p>{selectedNode.type} · {selectedNode.language || 'Unknown language'}</p></div><dl><dt>Location</dt><dd>{selectedNode.path || 'External dependency'}</dd><dt>Module</dt><dd>{selectedNode.module || '—'}</dd><dt>Relationships</dt><dd>{selectedEdges.length}</dd><dt>Used by / uses</dt><dd>{selectedEdges.filter(edge => edge.target === selected).length} / {selectedEdges.filter(edge => edge.source === selected).length}</dd></dl><div className="selected-edges">{selectedEdges.map(edge => <div key={`${edge.source}-${edge.target}-${edge.type}`}><span>{edge.source === selected ? '→' : '←'}</span>{edge.source === selected ? edge.target : edge.source}<small>{edge.type}</small></div>)}</div></> : <div className="dependency-detail-empty"><GitBranch size={24} /><strong>Select a node</strong><span>Inspect its location, relationships, and coupling metrics.</span></div>}</aside></div><div className="dependency-mermaid card"><div className="dependency-section-heading"><h3>Graph source</h3><span>{visible.length} visible nodes · {edges.length} relationships</span></div><pre>{mermaid}</pre></div></>;
+}
+
 export default function DependenciesPage() {
-  const { id: projectId } = useParams();
-  const location = useLocation();
-  const [repositories, setRepositories] = useState([]);
-  const [selectedRepo, setSelectedRepo] = useState(null);
-  const [graph, setGraph] = useState(null);
-  const [mermaid, setMermaid] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('graph');
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    repositoryApi.list(projectId)
-      .then(res => {
-        const repos = res.data.data || [];
-        setRepositories(repos);
-        const preSelected = location.state?.repoId
-          ? repos.find(r => r.id === location.state.repoId)
-          : repos[0];
-        if (preSelected) setSelectedRepo(preSelected);
-      }).catch(() => { });
-  }, [projectId, location.state]);
-
-  const loadDependencies = async (repo) => {
-    if (!repo) return;
-    setLoading(true);
-    setError('');
-    setGraph(null);
-    setMermaid('');
-    try {
-      const res = await parserApi.getDependencyGraph(repo.id);
-      const data = res.data.data || res.data;
-      setGraph(data.graph || null);
-      const nextMermaid = (typeof data.mermaid === 'string' && data.mermaid.trim())
-        ? data.mermaid
-        : 'graph LR\n    repo["No dependency data available"]\n';
-      setMermaid(nextMermaid);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load dependency graph for this repository.');
-      setMermaid('graph LR\n    repo["No dependency data available"]\n');
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (selectedRepo) loadDependencies(selectedRepo);
-  }, [selectedRepo]);
-
-  return (
-    <div>
-      <div className="page-header">
-        <div>
-          <div className="page-title">🔗 Dependency Graph</div>
-          <div className="page-subtitle">Code relationships and module dependencies</div>
-        </div>
-        {repositories.length > 0 && (
-          <select className="input" style={{ width: 'auto' }}
-            value={selectedRepo?.id || ''}
-            onChange={e => setSelectedRepo(repositories.find(r => r.id === e.target.value))}>
-            {repositories.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        )}
-      </div>
-
-      <ProjectSubNav activeTab="dependencies" />
-
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        {['graph', 'mermaid'].map(tab => (
-          <button key={tab} className={`btn ${activeTab === tab ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-            onClick={() => setActiveTab(tab)}>
-            {tab === 'graph' ? '📊 Graph Stats' : '📝 Mermaid Source'}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="loading-center"><div className="spinner" />        </div>
-      ) : activeTab === 'graph' ? (
-        <div>
-          {error && <div className="alert alert-error" style={{ marginBottom: '16px' }}>{error}</div>}
-          {graph && (
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '16px' }}>
-              <div className="card stat-card">
-                <div className="stat-value">{graph.nodeCount || 0}</div>
-                <div className="stat-label">Nodes</div>
-              </div>
-              <div className="card stat-card">
-                <div className="stat-value">{graph.edgeCount || 0}</div>
-                <div className="stat-label">Edges</div>
-              </div>
-              <div className="card stat-card">
-                <div className="stat-value">{graph.topDependencies?.length || 0}</div>
-                <div className="stat-label">Top Dependencies</div>
-              </div>
-            </div>
-          )}
-          {!graph && !error && (
-            <div className="empty-state">
-              <h3>No dependency data</h3>
-              <p>No relationships were detected for this repository yet.</p>
-            </div>
-          )}
-          {graph?.topDependencies && graph.topDependencies.length > 0 && (
-            <div className="card">
-              <div style={{ fontWeight: '600', marginBottom: '12px' }}>🔝 Most Referenced Modules</div>
-              {graph.topDependencies.map((dep, i) => (
-                <div key={i} style={{
-                  padding: '6px 0', borderBottom: '1px solid var(--border)',
-                  fontFamily: 'var(--font-mono)', fontSize: '12px'
-                }}>
-                  {i + 1}. {dep}
-                </div>
-              ))}
-            </div>
-          )}
-          {graph?.edges && (
-            <div className="card" style={{ marginTop: '16px' }}>
-              <div style={{ fontWeight: '600', marginBottom: '12px' }}>Dependency Edges ({graph.edges.length})</div>
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                {graph.edges.slice(0, 100).map((edge, i) => (
-                  <div key={i} style={{
-                    display: 'flex', gap: '8px', padding: '4px 0',
-                    fontSize: '12px', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-mono)'
-                  }}>
-                    <span style={{ color: 'var(--primary-light)' }}>{edge.source}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>→ {edge.type} →</span>
-                    <span>{edge.target}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="card">
-          <div style={{ fontWeight: '600', marginBottom: '12px' }}>Mermaid Diagram Source</div>
-          <pre style={{
-            fontFamily: 'var(--font-mono)', fontSize: '12px', padding: '12px',
-            background: 'var(--bg)', borderRadius: 'var(--radius)',
-            overflowX: 'auto', maxHeight: '500px', whiteSpace: 'pre-wrap'
-          }}>
-            {mermaid || (error ? 'Unable to generate Mermaid source.' : 'No diagram data available.')}
-          </pre>
-        </div>
-      )}
-    </div>
-  );
+  const { id: projectId } = useParams(); const location = useLocation(); const [repositories, setRepositories] = useState([]); const [selectedRepo, setSelectedRepo] = useState(null); const [job, setJob] = useState(null); const pollRef = useRef(null); const [error, setError] = useState('');
+  const poll = async (repo, id) => { try { const response = await parserApi.getDependencyAnalysis(repo.id, id); const next = response.data.data || response.data; setJob(next); if (next.status === 'RUNNING' || next.status === 'QUEUED') pollRef.current = setTimeout(() => poll(repo, id), 900); } catch { setError('Unable to read dependency analysis progress.'); } };
+  const start = async repo => { if (!repo || job?.status === 'RUNNING' || job?.status === 'QUEUED') return; setError(''); setJob(null); try { const response = await parserApi.startDependencyAnalysis(repo.id); const next = response.data.data || response.data; setJob(next); poll(repo, next.jobId); } catch { setError('Dependency analysis failed to start.'); } };
+  useEffect(() => { repositoryApi.list(projectId).then(response => { const repos = response.data.data || []; setRepositories(repos); const selected = location.state?.repoId ? repos.find(repo => repo.id === location.state.repoId) : repos[0]; if (selected) setSelectedRepo(selected); }).catch(() => setError('Unable to load repositories.')); return () => clearTimeout(pollRef.current); }, [projectId, location.state]);
+  useEffect(() => { if (selectedRepo) start(selectedRepo); }, [selectedRepo]);
+  const running = job?.status === 'RUNNING' || job?.status === 'QUEUED'; const metrics = job?.result?.metrics || {};
+  return <div className="dependency-page"><div className="page-header dependency-header"><div><div className="page-title"><GitBranch size={22} /> Dependency intelligence</div><div className="page-subtitle">Actual relationships across source files, components, modules, and libraries</div></div><div className="dependency-controls">{repositories.length > 0 && <select className="input" disabled={running} value={selectedRepo?.id || ''} onChange={event => setSelectedRepo(repositories.find(repo => repo.id === event.target.value))}>{repositories.map(repo => <option key={repo.id} value={repo.id}>{repo.name}</option>)}</select>}{job?.status === 'COMPLETED' && <button className="btn btn-secondary" onClick={() => start(selectedRepo)}><RefreshCw size={15} /> Re-analyze</button>}</div></div><div className={running ? 'dependency-locked' : ''}><ProjectSubNav activeTab="dependencies" /></div>{error && <div className="cs-alert cs-alert-danger">{error}</div>}{running || job?.status === 'FAILED' ? <Progress job={job} repo={selectedRepo} onRetry={() => start(selectedRepo)} /> : job?.status === 'COMPLETED' ? <><section className="dependency-summary">{[['totalNodes', 'Total nodes'], ['internalNodes', 'Internal nodes'], ['externalNodes', 'External nodes'], ['totalRelationships', 'Relationships'], ['circularDependencies', 'Circular deps'], ['highCouplingNodes', 'High coupling']].map(([key, label]) => <div className="dependency-stat card" key={key}><strong>{metrics[key] || 0}</strong><span>{label}</span></div>)}</section><GraphPanel result={job.result} /></> : <Progress job={job} repo={selectedRepo} onRetry={() => start(selectedRepo)} />}</div>;
 }
