@@ -21,6 +21,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import com.codesense.ai.vector.RepositoryChunkRepository;
 import com.codesense.ai.model.DocumentationRepository;
@@ -56,6 +58,7 @@ public class RepositoryService {
     @Autowired
     @Qualifier("ingestionTaskExecutor")
     private Executor ingestionExecutor;
+    private final PlatformTransactionManager transactionManager;
 
     @Transactional
     public RepositoryDto uploadZip(String email, UUID projectId, MultipartFile file, UploadRepositoryRequest request) {
@@ -243,9 +246,15 @@ public class RepositoryService {
             request.setBranch(repo.getDefaultBranch());
 
             Path refreshed = gitHubService.cloneRepository(request, repositoryId);
-            repositoryFileRepository.deleteByRepositoryId(repositoryId);
-            repo.setLocalPath(refreshed.toAbsolutePath().toString());
-            indexRepositoryFiles(repo, refreshed);
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                repositoryFileRepository.deleteByRepositoryId(repositoryId);
+                repo.setLocalPath(refreshed.toAbsolutePath().toString());
+                try {
+                    indexRepositoryFiles(repo, refreshed);
+                } catch (IOException e) {
+                    throw new IllegalStateException("Failed to index refreshed repository files", e);
+                }
+            });
         } catch (Exception e) {
             log.error("Failed to refresh GitHub repository {}: {}", repositoryId, e.getMessage(), e);
             markFailed(repositoryId, e.getMessage());
