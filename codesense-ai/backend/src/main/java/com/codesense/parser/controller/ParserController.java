@@ -62,19 +62,32 @@ public class ParserController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDependencyGraph(
             @PathVariable UUID repositoryId,
             @RequestParam(value = "direction", required = false) String direction) {
-        ParsedRepositoryDTO parsed = repositoryParserService.parseRepository(repositoryId);
-        List<com.codesense.parser.model.ParsedFile> parsedFiles = convertToModel(parsed);
+        try {
+            ParsedRepositoryDTO parsed = repositoryParserService.parseRepository(repositoryId);
+            List<com.codesense.parser.model.ParsedFile> parsedFiles = convertToModel(parsed);
 
-        DependencyAnalysisService.DependencyGraph graph =
-            dependencyAnalysisService.buildDependencyGraph(parsedFiles);
-        String mermaid = dependencyAnalysisService.generateMermaidDependencyDiagram(graph, direction);
+            DependencyAnalysisService.DependencyGraph graph =
+                dependencyAnalysisService.buildDependencyGraph(parsedFiles);
+            String mermaid = dependencyAnalysisService.generateMermaidDependencyDiagram(graph, direction);
 
-        return ResponseEntity.ok(ApiResponse.success(Map.of(
-            "graph", graph,
-            "mermaid", mermaid,
-            "nodeCount", graph.getNodeCount(),
-            "edgeCount", graph.getEdgeCount()
-        )));
+            return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "graph", graph,
+                "mermaid", mermaid,
+                "nodeCount", graph.getNodeCount(),
+                "edgeCount", graph.getEdgeCount()
+            )));
+        } catch (Exception e) {
+            DependencyAnalysisService.DependencyGraph emptyGraph =
+                dependencyAnalysisService.buildDependencyGraph(List.of());
+            String fallbackMermaid = dependencyAnalysisService.generateMermaidDependencyDiagram(emptyGraph, direction);
+
+            return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "graph", emptyGraph,
+                "mermaid", fallbackMermaid,
+                "nodeCount", 0,
+                "edgeCount", 0
+            )));
+        }
     }
 
     @PostMapping("/repositories/{repositoryId}/uml")

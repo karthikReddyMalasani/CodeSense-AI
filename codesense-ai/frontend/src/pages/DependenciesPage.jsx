@@ -36,9 +36,13 @@ export default function DependenciesPage() {
       const res = await parserApi.getDependencyGraph(repo.id);
       const data = res.data.data || res.data;
       setGraph(data.graph || null);
-      setMermaid(data.mermaid || '');
+      const nextMermaid = (typeof data.mermaid === 'string' && data.mermaid.trim())
+        ? data.mermaid
+        : 'graph LR\n    repo["No dependency data available"]\n';
+      setMermaid(nextMermaid);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load dependency graph for this repository.');
+      setMermaid('graph LR\n    repo["No dependency data available"]\n');
     }
     setLoading(false);
   };

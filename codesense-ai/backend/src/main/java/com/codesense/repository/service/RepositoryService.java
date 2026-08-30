@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -50,6 +52,8 @@ public class RepositoryService {
     private final GitHubService gitHubService;
     private final LanguageDetectionService languageDetectionService;
     private final IngestionService ingestionService;
+    @Qualifier("ingestionTaskExecutor")
+    private final Executor ingestionExecutor;
 
     @Transactional
     public RepositoryDto uploadZip(String email, UUID projectId, MultipartFile file, UploadRepositoryRequest request) {
@@ -102,6 +106,23 @@ public class RepositoryService {
 
     public RepositoryDto getRepository(String email, UUID repositoryId) {
         Repository repo = getRepositoryEntityWithOwnerCheck(email, repositoryId);
+        return toDto(repo);
+    }
+
+    @Transactional
+    public RepositoryDto refreshGitHubRepository(String email, UUID repositoryId) {
+        Repository repo = getRepositoryEntityWithOwnerCheck(email, repositoryId);
+        if (repo.getSourceType() != SourceType.GITHUB) {
+            throw new BadRequestException("Only GitHub repositories can be refreshed");
+        }
+
+        repo.setStatus(RepositoryStatus.PROCESSING);
+        repo.setAnalysisStatus(AnalysisStatus.PENDING);
+        repo.setIngestionStatus(IngestionStatus.PENDING);
+        repo.setErrorMessage(null);
+        repositoryRepo.save(repo);
+
+        ingestionExecutor.execute(() -> refreshGitHubRepository(repositoryId));
         return toDto(repo);
     }
 
@@ -207,6 +228,24 @@ public class RepositoryService {
             indexRepositoryFiles(repo, cloned);
         } catch (Exception e) {
             log.error("Failed to clone GitHub repo for repository {}: {}", repositoryId, e.getMessage(), e);
+            markFailed(repositoryId, e.getMessage());
+        }
+    }
+
+    @Transactional
+    public void refreshGitHubRepository(UUID repositoryId) {
+        try {
+            Repository repo = repositoryRepo.findById(repositoryId).orElseThrow();
+            GitHubImportRequest request = new GitHubImportRequest();
+            request.setGithubUrl(repo.getGithubUrl());
+            request.setBranch(repo.getDefaultBranch());
+
+            Path refreshed = gitHubService.cloneRepository(request, repositoryId);
+            repositoryFileRepository.deleteByRepositoryId(repositoryId);
+            repo.setLocalPath(refreshed.toAbsolutePath().toString());
+            indexRepositoryFiles(repo, refreshed);
+        } catch (Exception e) {
+            log.error("Failed to refresh GitHub repository {}: {}", repositoryId, e.getMessage(), e);
             markFailed(repositoryId, e.getMessage());
         }
     }

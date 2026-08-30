@@ -37,9 +37,15 @@ export function AuthProvider({ children }) {
         return;
       }
       if (!token) {
-        // If an OAuth success hash is in the URL, keep loading true so onAuthStateChange can finish.
-        // If an OAuth error is present, set loading to false immediately.
-        if (mounted && (!isOAuthSuccessCallback || isOAuthErrorCallback)) setLoading(false);
+        // If an OAuth success callback is in the URL, keep loading true so the session
+        // can finish exchanging before the app route guard redirects to /login.
+        if (mounted) {
+          if (isOAuthSuccessCallback && !isOAuthErrorCallback) {
+            setLoading(true);
+          } else {
+            setLoading(false);
+          }
+        }
         return;
       }
       try {

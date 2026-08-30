@@ -17,6 +17,7 @@ export default function ProjectDetailPage() {
   const [editForm, setEditForm] = useState({ id: '', name: '', description: '' });
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [refreshingRepoId, setRefreshingRepoId] = useState(null);
   const [error, setError] = useState('');
 
   const [infoMsg, setInfoMsg] = useState('');
@@ -144,6 +145,19 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const refreshGitHubRepository = async (repo) => {
+    setRefreshingRepoId(repo.id); setError(''); setInfoMsg('');
+    try {
+      const res = await repositoryApi.refresh(repo.id);
+      setRepositories(prev => prev.map(item => item.id === repo.id ? res.data.data : item));
+      setInfoMsg(`Refresh started for ${repo.name}. Pulling the latest GitHub changes and rebuilding analysis...`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to refresh GitHub repository');
+    } finally {
+      setRefreshingRepoId(null);
+    }
+  };
+
   const statusBadge = (status) => {
     const map = { READY: 'badge-green', PROCESSING: 'badge-yellow', FAILED: 'badge-red', PENDING: 'badge-gray' };
     return <span className={`badge ${map[status] || 'badge-gray'}`}>{status}</span>;
@@ -242,6 +256,16 @@ export default function ProjectDetailPage() {
                   {repo.status === 'READY' && repo.ingestionStatus !== 'COMPLETED' && (
                     <button className="btn btn-secondary btn-sm" onClick={() => triggerIngestion(repo.id)}>
                       🔄 Ingest AI
+                    </button>
+                  )}
+                  {repo.sourceType === 'GITHUB' && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => refreshGitHubRepository(repo)}
+                      disabled={refreshingRepoId === repo.id || repo.status === 'PROCESSING'}
+                      title="Pull the latest GitHub changes and rebuild the repository analysis"
+                    >
+                      {refreshingRepoId === repo.id ? '⏳ Refreshing...' : '↻ Refresh GitHub'}
                     </button>
                   )}
                   <button className="btn btn-primary btn-sm"

@@ -98,6 +98,16 @@ public class RepositoryController {
         return ResponseEntity.ok(ApiResponse.success("Repository updated successfully", repo));
     }
 
+    @PostMapping("/api/repositories/{repositoryId}/refresh")
+    @Operation(summary = "Refresh a GitHub repository and re-index its latest contents")
+    public ResponseEntity<ApiResponse<RepositoryDto>> refreshRepository(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID repositoryId) {
+        RepositoryDto repo = repositoryService.refreshGitHubRepository(userDetails.getUsername(), repositoryId);
+        return ResponseEntity.accepted()
+            .body(ApiResponse.success("GitHub repository refresh started", repo));
+    }
+
     @DeleteMapping("/api/repositories/{repositoryId}")
     @Operation(summary = "Delete a specific repository")
     public ResponseEntity<ApiResponse<Void>> deleteRepository(
