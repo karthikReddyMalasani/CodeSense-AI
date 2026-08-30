@@ -364,7 +364,7 @@ public class AiService {
         if (!endpointRows.isEmpty()) {
             sb.append("| HTTP Method | Endpoint Path | Controller / Method | Return Type | Parameters | Source File |\n");
             sb.append("| :--- | :--- | :--- | :--- | :--- | :--- |\n");
-            endpointRows.stream().limit(25).forEach(row -> sb.append(row).append("\n"));
+            endpointRows.forEach(row -> sb.append(row).append("\n"));
             sb.append("\n");
         } else {
             sb.append("### Detected API Controller Files\n\n");

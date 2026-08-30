@@ -1,190 +1,152 @@
 /* frontend/src/styles/theme.css
-   Theme variables and component fixes for light/dark modes
-   Adds explicit colors for card-like containers, alerts, badges and buttons
-   to ensure text remains visible in light theme.
-   Import this file in your frontend entry (e.g. src/main.jsx) with:
-     import './styles/theme.css';
+   Shared theme variables and readable component styling for light/dark modes.
 */
 
-/* ---------- Base variables (dark-friendly defaults) ---------- */
 :root {
   --bg: #0b0f13;
-  --bg-card: #0f1720;
-  --text: #e6edf3;
+  --bg-card: #101827;
+  --bg-soft: #111827;
+  --text: #e5edf7;
   --text-muted: #9aa4b2;
-  --border: rgba(255,255,255,0.06);
-  --table-border: rgba(255,255,255,0.06);
-  --accent-color: #3b82f6;
+  --border: rgba(148, 163, 184, 0.2);
+  --table-border: rgba(148, 163, 184, 0.25);
+  --accent-color: #6366f1;
+  --accent-color-strong: #4f46e5;
+  --input-bg: #0f172a;
+  --button-secondary-bg: #111827;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Source Code Pro", monospace;
   --radius: 8px;
 }
 
-/* ---------- Light theme overrides ---------- */
 body[data-theme='light'],
-:root[data-theme='light'] {
-  --bg: #ffffff;
-  --bg-card: #f8fafc;
-  --text: #0f1720;
-  --text-muted: #6b7280;
-  --border: rgba(15,23,36,0.06);
-  --table-border: rgba(15,23,36,0.08);
-  --accent-color: #2563eb;
-}
-
-/* Fallback if theme toggles via class */
+:root[data-theme='light'],
 body.theme-light {
-  --bg: #ffffff;
-  --bg-card: #f8fafc;
-  --text: #0f1720;
-  --text-muted: #6b7280;
-  --border: rgba(15,23,36,0.06);
-  --table-border: rgba(15,23,36,0.08);
+  --bg: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-soft: #f1f5f9;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --border: rgba(15, 23, 42, 0.12);
+  --table-border: rgba(15, 23, 42, 0.18);
   --accent-color: #2563eb;
+  --accent-color-strong: #1d4ed8;
+  --input-bg: #ffffff;
+  --button-secondary-bg: #f8fafc;
 }
 
-/* ---------- Global layout & readable defaults ---------- */
 html, body, #root {
   background: var(--bg);
   color: var(--text);
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+* { box-sizing: border-box; }
+
 a { color: var(--accent-color); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+.btn,
+.icon-action-btn,
+.tab-btn,
+.tree-toggle-btn {
+  color: var(--text);
+}
+
+h1, h2, h3, h4, h5, h6,
+p, span, label, strong, b, em, i, li, td, th, div {
+  color: inherit;
+}
+
 .text-muted, .muted { color: var(--text-muted); }
 
-/* ---------- Card / box fixes (addresses invisible text in light theme) ---------- */
 .card,
 .box,
 .panel,
-.docs-card {
+.docs-card,
+.empty-state,
+.page-header,
+.page-subtitle,
+.alert,
+.markdown,
+.md-content,
+.api-docs,
+.docs-content,
+.markdown-body {
   background: var(--bg-card);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px;
 }
 
-/* Ensure any direct text inside cards is visible; avoid overriding deliberate muted colors */
-.card *:not(.text-muted) {
+.card *:not(.text-muted):not(.badge):not(.btn):not(svg):not(path),
+.box *:not(.text-muted):not(.badge):not(.btn):not(svg):not(path),
+.panel *:not(.text-muted):not(.badge):not(.btn):not(svg):not(path),
+.docs-card *:not(.text-muted):not(.badge):not(.btn):not(svg):not(path) {
   color: var(--text);
 }
 
-/* Keep code blocks inside cards readable */
-.card pre,
-.card code,
-.box pre,
-.box code {
-  background: transparent;
-  color: var(--text);
-  border-radius: 6px;
+pre, code {
   font-family: var(--font-mono);
 }
 
-/* Small helper for elements that previously used var(--bg) as background inside cards */
-.card [style], .box [style] {
-  /* If inline styles set backgrounds that result in low contrast, ensure text stays readable */
-  color: var(--text) !important;
-}
-
-/* Alerts */
-.alert {
-  background: transparent;
+pre {
+  background: var(--bg-soft);
   color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 10px;
-  border: 1px solid transparent;
+  padding: 12px;
+  overflow: auto;
 }
-.alert-info { background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.12); }
-.alert-error { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.12); }
 
-/* Empty states */
-.empty-state { color: var(--text); }
-.empty-state h3 { margin: 0 0 6px 0; }
+code {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
 
-/* Badges and labels */
 .badge, .badge-blue, .badge-gray {
-  background: rgba(0,0,0,0.06);
+  background: rgba(148, 163, 184, 0.12);
   color: var(--text);
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 12px;
 }
-.badge-blue { background: rgba(37,99,235,0.12); }
-.badge-gray { background: rgba(107,114,128,0.12); }
+.badge-blue { background: rgba(59,130,246,0.12); }
+.badge-gray { background: rgba(148,163,184,0.14); }
 
-/* Buttons: make sure text shows in light theme even if button backgrounds are light */
 .btn {
   color: var(--text);
+  background: var(--button-secondary-bg);
   border: 1px solid var(--border);
-  background: transparent;
+  border-radius: 8px;
+  transition: filter 0.15s ease, border-color 0.15s ease;
 }
-.btn-primary { background: var(--accent-color); color: #fff; }
-.btn-secondary { background: transparent; color: var(--text); }
+.btn:hover { filter: brightness(1.05); }
+.btn-primary {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #ffffff;
+}
+.btn-secondary {
+  background: var(--button-secondary-bg);
+  color: var(--text);
+}
 .btn-sm { padding: 6px 10px; font-size: 13px; }
 
-/* Documentation / API tables */
-.api-docs, .docs-content, .markdown-body {
-  background: transparent;
-  color: var(--text);
-}
-
-.api-docs table, .docs-content table, .markdown-body table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: auto;
-  margin: 0 0 1rem 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.api-docs th, .docs-content th, .markdown-body th {
-  text-align: left;
-  padding: 10px 12px;
-  font-weight: 600;
-  background: transparent;
-  color: var(--text);
-  border-bottom: 1px solid var(--table-border);
-}
-
-.api-docs td, .docs-content td, .markdown-body td {
-  padding: 10px 12px;
-  vertical-align: top;
-  color: var(--text);
-  border-bottom: 1px solid var(--table-border);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.api-docs tr:last-child td, .docs-content tr:last-child td, .markdown-body tr:last-child td {
-  border-bottom: none;
-}
-
-.api-docs pre, .docs-content pre, .markdown-body pre {
-  background: var(--bg-card);
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 12px;
-  border-radius: 6px;
-  overflow: auto;
-  font-family: var(--font-mono);
-  font-size: 13px;
-}
-
-.api-docs code, .docs-content code, .markdown-body code {
-  background: rgba(0,0,0,0.04);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  color: var(--text);
-}
-
-/* Input styling - black text with white background */
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -195,21 +157,102 @@ input[type="date"],
 input[type="time"],
 textarea,
 select {
-  background-color: #ffffff !important;
-  color: #000000 !important;
+  background-color: var(--input-bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px;
 }
 
-input[type="text"]::placeholder,
-input[type="email"]::placeholder,
-input[type="password"]::placeholder,
-input[type="number"]::placeholder,
-input[type="search"]::placeholder,
-input[type="url"]::placeholder,
+input::placeholder,
 textarea::placeholder {
-  color: #6b7280 !important;
+  color: var(--text-muted) !important;
+  opacity: 1;
 }
 
-/* Responsive tables */
+option {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.api-docs, .docs-content, .markdown-body {
+  background: transparent;
+  color: var(--text);
+}
+
+.api-docs table, .docs-content table, .markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.api-docs th, .docs-content th, .markdown-body th,
+.api-docs td, .docs-content td, .markdown-body td {
+  vertical-align: top;
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--table-border);
+  border-right: 1px solid var(--table-border);
+}
+
+.api-docs th, .docs-content th, .markdown-body th {
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.api-docs td:last-child, .docs-content td:last-child, .markdown-body td:last-child,
+.api-docs th:last-child, .docs-content th:last-child, .markdown-body th:last-child {
+  border-right: none;
+}
+
+.api-docs tr:last-child td, .docs-content tr:last-child td, .markdown-body tr:last-child td {
+  border-bottom: none;
+}
+
+.api-docs pre, .docs-content pre, .markdown-body pre {
+  background: var(--bg-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 6px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.api-docs code, .docs-content code, .markdown-body code {
+  background: rgba(148,163,184,0.12);
+  color: var(--text);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.markdown table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: normal;
+}
+
+.alert {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: rgba(148, 163, 184, 0.06);
+  color: var(--text);
+}
+.alert-error {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.empty-state { color: var(--text); }
+.empty-state h3 { margin: 0 0 6px; }
+
 @media (max-width: 900px) {
   .api-docs table, .docs-content table, .markdown-body table {
     display: block;
