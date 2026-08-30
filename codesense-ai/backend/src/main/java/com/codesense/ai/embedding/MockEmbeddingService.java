@@ -15,7 +15,7 @@ import java.util.Random;
  * Produces deterministic pseudo-random embeddings based on text hash.
  * NOT semantically meaningful, but consistent (same text → same vector).
  *
- * Used alongside Groq LLM because Groq has no embedding endpoint.
+ * Used for local development when a real embedding provider is not configured.
  * PGVector is still populated and can be searched (results are heuristic, not semantic).
  */
 @Slf4j

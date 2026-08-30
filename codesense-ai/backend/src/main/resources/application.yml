@@ -62,6 +62,8 @@ jwt:
 gemini:
   api-key: ${GEMINI_API_KEY:}
   model: ${GEMINI_MODEL:gemini-2.5-flash}
+  embedding-model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+  embedding-dimension: ${EMBEDDING_DIMENSION:768}
   endpoint: ${GEMINI_ENDPOINT:https://generativelanguage.googleapis.com/v1beta/models}
 
 # ─── AI Configuration ────────────────────────────────────────────────────────
@@ -69,7 +71,7 @@ codesense:
   ai:
     # Use gemini for real AI, mock for tests/offline
     llm-provider: ${AI_LLM_PROVIDER:gemini}
-    embedding-provider: ${AI_EMBEDDING_PROVIDER:mock}
+    embedding-provider: ${AI_EMBEDDING_PROVIDER:gemini}
     embedding-dimension: ${EMBEDDING_DIMENSION:768}
     rag:
       top-k: 5

@@ -7,7 +7,7 @@ import java.util.List;
  * Team Member 3 (Karthik) owns this interface and its implementations.
  *
  * Implementations:
- * - WatsonxEmbeddingService: IBM watsonx.ai embeddings (production)
+ * - GeminiEmbeddingService: Google Gemini embeddings (production)
  * - MockEmbeddingService: Local development without IBM credentials
  */
 public interface EmbeddingService {
