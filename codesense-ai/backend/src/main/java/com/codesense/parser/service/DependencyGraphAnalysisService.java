@@ -4,7 +4,6 @@ import com.codesense.integration.parser.dto.ParsedFileDTO;
 import com.codesense.integration.parser.dto.ParsedRepositoryDTO;
 import com.codesense.repository.model.RepositoryFile;
 import com.codesense.repository.repository.RepositoryFileRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -14,13 +13,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 @Service
-@RequiredArgsConstructor
 public class DependencyGraphAnalysisService {
     private static final List<String> STAGES = List.of("Reading project structure", "Detecting project type", "Detecting programming languages", "Reading dependency configuration", "Scanning source files", "Identifying modules/packages", "Identifying classes/components", "Extracting imports", "Extracting exports", "Resolving internal dependencies", "Resolving external dependencies", "Building dependency relationships", "Detecting circular dependencies", "Detecting highly coupled modules", "Calculating dependency metrics", "Building dependency graph", "Organizing graph hierarchy", "Generating dependency analysis", "Rendering interactive graph", "Finalizing report");
     private final RepositoryParserService parserService;
     private final RepositoryFileRepository fileRepository;
-    @Qualifier("aiTaskExecutor") private final Executor executor;
+    private final Executor executor;
     private final Map<UUID, Job> jobs = new ConcurrentHashMap<>();
+
+    public DependencyGraphAnalysisService(RepositoryParserService parserService,
+                                          RepositoryFileRepository fileRepository,
+                                          @Qualifier("aiTaskExecutor") Executor executor) {
+        this.parserService = parserService;
+        this.fileRepository = fileRepository;
+        this.executor = executor;
+    }
 
     public View start(UUID repositoryId) { Job existing = jobs.get(repositoryId); if (existing != null && existing.status.isRunning()) return existing.view(); Job job = new Job(UUID.randomUUID(), repositoryId); jobs.put(repositoryId, job); executor.execute(() -> analyze(job)); return job.view(); }
     public View get(UUID repositoryId, UUID jobId) { Job job = jobs.get(repositoryId); if (job == null || !job.id.equals(jobId)) throw new NoSuchElementException("Dependency analysis not found"); return job.view(); }

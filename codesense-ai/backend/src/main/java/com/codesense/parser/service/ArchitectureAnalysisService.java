@@ -4,7 +4,6 @@ import com.codesense.integration.parser.dto.ParsedFileDTO;
 import com.codesense.integration.parser.dto.ParsedRepositoryDTO;
 import com.codesense.repository.model.RepositoryFile;
 import com.codesense.repository.repository.RepositoryFileRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +13,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 @Service
-@RequiredArgsConstructor
 public class ArchitectureAnalysisService {
     private static final List<String> STAGES = List.of(
         "Reading project structure", "Scanning source files", "Identifying application entry points",
@@ -29,8 +27,16 @@ public class ArchitectureAnalysisService {
 
     private final RepositoryParserService parserService;
     private final RepositoryFileRepository fileRepository;
-    @Qualifier("aiTaskExecutor") private final Executor analysisExecutor;
+    private final Executor analysisExecutor;
     private final Map<UUID, AnalysisJob> jobs = new ConcurrentHashMap<>();
+
+    public ArchitectureAnalysisService(RepositoryParserService parserService,
+                                        RepositoryFileRepository fileRepository,
+                                        @Qualifier("aiTaskExecutor") Executor analysisExecutor) {
+        this.parserService = parserService;
+        this.fileRepository = fileRepository;
+        this.analysisExecutor = analysisExecutor;
+    }
 
     public JobView start(UUID repositoryId) {
         AnalysisJob current = jobs.get(repositoryId);
