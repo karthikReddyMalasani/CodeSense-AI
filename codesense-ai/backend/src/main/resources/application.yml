@@ -58,16 +58,17 @@ jwt:
   secret: ${JWT_SECRET:please-change-this-secret-key-in-production-it-must-be-at-least-64-characters-long}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
-# ─── Groq (free cloud AI — console.groq.com, sign up with GitHub) ────────────
-groq:
-  api-key: ${GROQ_API_KEY:}
-  model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+# ─── Google Gemini ───────────────────────────────────────────────────────────
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
+  endpoint: ${GEMINI_ENDPOINT:https://generativelanguage.googleapis.com/v1beta/models}
 
 # ─── AI Configuration ────────────────────────────────────────────────────────
 codesense:
   ai:
-    # Use groq for real AI, mock for tests/offline
-    llm-provider: ${AI_LLM_PROVIDER:mock}
+    # Use gemini for real AI, mock for tests/offline
+    llm-provider: ${AI_LLM_PROVIDER:gemini}
     embedding-provider: ${AI_EMBEDDING_PROVIDER:mock}
     embedding-dimension: ${EMBEDDING_DIMENSION:768}
     rag:

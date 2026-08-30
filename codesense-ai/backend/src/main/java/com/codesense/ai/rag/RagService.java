@@ -289,10 +289,10 @@ public class RagService {
 
         if (errorMsg != null && !errorMsg.isBlank()) {
             answer.append("\n\n---\n\n**AI provider notice:** ");
-            if (errorMsg.contains("configured Groq model")) {
-                answer.append("The configured Groq model is unavailable. Set `GROQ_MODEL=llama-3.3-70b-versatile` and redeploy.");
-            } else if (errorMsg.contains("GROQ_API_KEY")) {
-                answer.append("Groq is not configured. Add `GROQ_API_KEY` to the backend environment and redeploy.");
+            if (errorMsg.contains("configured Gemini model")) {
+                answer.append("The configured Gemini model is unavailable. Set `GEMINI_MODEL=gemini-2.5-flash` and redeploy.");
+            } else if (errorMsg.contains("GEMINI_API_KEY")) {
+                answer.append("Gemini is not configured. Add `GEMINI_API_KEY` to the backend environment and redeploy.");
             } else {
                 answer.append("The AI provider is temporarily unavailable. Check the backend AI configuration and try again.");
             }

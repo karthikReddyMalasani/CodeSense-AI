@@ -4,7 +4,7 @@ An AI-powered multi-language code intelligence and documentation platform.
 
 ## Overview
 
-CodeSense AI lets you upload repositories, analyze source code across 13 programming languages, and use **Groq (free)** + **IBM Granite** for intelligent code understanding, RAG-based Q&A, documentation generation, and semantic search.
+CodeSense AI lets you upload repositories, analyze source code across 13 programming languages, and use **Google Gemini** for intelligent code understanding, RAG-based Q&A, documentation generation, and semantic search.
 
 ## Team Structure
 
@@ -47,18 +47,18 @@ CodeSense AI lets you upload repositories, analyze source code across 13 program
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-### Step 2 — Get a free Groq API key
+### Step 2 — Get a Gemini API key
 
-1. Go to https://console.groq.com (sign in with GitHub)
-2. Click **API Keys → Create API Key**
-3. Copy the key — it starts with `gsk_`
+1. Go to https://aistudio.google.com/apikey
+2. Create an API key for the Gemini API
+3. Copy the key securely
 
 ### Step 3 — Configure environment
 
 ```powershell
 Copy-Item .env.example .env
 # Open .env and set:
-#   GROQ_API_KEY=gsk_your_key_here
+#   GEMINI_API_KEY=your_gemini_key_here
 #   DATABASE_URL=jdbc:postgresql://...  (Neon URL or localhost)
 #   DATABASE_USERNAME=...
 #   DATABASE_PASSWORD=...
@@ -98,11 +98,12 @@ Frontend: http://localhost:3000
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `AI_LLM_PROVIDER` | `groq` | Real AI answers via Groq free API |
-| `AI_EMBEDDING_PROVIDER` | `mock` | Deterministic embeddings (Groq has no embedding endpoint) |
+| `AI_LLM_PROVIDER` | `gemini` | Real AI answers via Google Gemini |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model used for generation |
+| `AI_EMBEDDING_PROVIDER` | `mock` | Deterministic embeddings for semantic search |
 | `AI_LLM_PROVIDER` | `mock` | Fake responses — for offline testing UI only |
 
-> **Groq free tier**: 14,400 requests/day, 6,000 tokens/min. No credit card ever.
+> Gemini API quotas and billing depend on your Google AI Studio project.
 
 ---
 
@@ -134,7 +135,7 @@ docker compose up --build
 codesense-ai/
 ├── backend/          # Spring Boot — TM2 (auth, project, repo) + TM3 (AI)
 │   └── src/main/java/com/codesense/
-│       ├── ai/       # RAG, LLM (Groq/Mock), embeddings, PGVector
+│       ├── ai/       # RAG, LLM (Gemini/Mock), embeddings, PGVector
 │       ├── auth/     # JWT, Spring Security
 │       ├── parser/   # JavaParser, regex multi-lang, JGraphT, PlantUML
 │       ├── project/  # Project CRUD
@@ -158,8 +159,8 @@ codesense-ai/
 | `DATABASE_USERNAME` | ✅ | DB username |
 | `DATABASE_PASSWORD` | ✅ | DB password |
 | `JWT_SECRET` | ✅ | 64+ char base64 secret |
-| `GROQ_API_KEY` | ✅ (for AI) | From console.groq.com |
-| `GROQ_MODEL` | optional | default: `llama-3.3-70b-versatile` |
+| `GEMINI_API_KEY` | ✅ (for AI) | From Google AI Studio |
+| `GEMINI_MODEL` | optional | default: `gemini-2.5-flash` |
 | `GITHUB_ACCESS_TOKEN` | optional | For private GitHub repos |
 | `UPLOAD_DIR` | optional | default: `./uploads` |
 | `MAX_UPLOAD_SIZE_MB` | optional | default: `100` |

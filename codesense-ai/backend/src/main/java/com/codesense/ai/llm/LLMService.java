@@ -7,7 +7,8 @@ import java.util.List;
  * Team Member 3 (Karthik) owns this interface and its implementations.
  *
  * Implementations:
- * - WatsonxLLMService: production IBM watsonx.ai / IBM Granite
+ * - GeminiLLMService: production Google Gemini
+ * - WatsonxLLMService: IBM watsonx.ai / IBM Granite
  * - MockLLMService: local development without IBM credentials
  */
 public interface LLMService {
