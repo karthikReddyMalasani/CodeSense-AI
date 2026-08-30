@@ -46,7 +46,7 @@ export default function LoginPage() {
     } catch (err) {
       const data = err.response?.data;
       let msg = data?.fieldErrors?.[0]?.message || data?.message || err.message || 'Invalid credentials. Please try again.';
-      
+
       // Improve error messages for better UX
       if (msg.includes('Email verification')) {
         msg = 'Please verify your email address first. Check your inbox for the verification link.';
@@ -55,7 +55,7 @@ export default function LoginPage() {
       } else if (msg.includes('Invalid credentials')) {
         msg = 'Email or password is incorrect. Please try again.';
       }
-      
+
       setGlobalError(msg);
     } finally {
       setLoading(false);
@@ -91,17 +91,17 @@ export default function LoginPage() {
       await sendMagicLink(form.email);
       setEmailSent(true);
     } catch (err) {
-      // Provide helpful error messages for different cases
-      let errorMsg = err.message || 'Unable to send the verification email. Please try again.';
-      
-      if (errorMsg.includes('Over request rate limit')) {
-        errorMsg = 'Too many requests. Please wait a few minutes before trying again.';
-      } else if (errorMsg.includes('sending magic link email') || errorMsg.includes('email service')) {
-        errorMsg = 'Email service is currently unavailable. Please try again later or use password login.';
+      console.error('Email verification link error:', err);
+      let errorMsg = err.message || 'Unable to send confirmation email.';
+
+      if (errorMsg.includes('rate limit') || errorMsg.includes('429') || errorMsg.includes('over_email_send_rate_limit')) {
+        errorMsg = 'Email rate limit reached for Supabase free tier. Please wait a few minutes or sign in directly with email/password.';
+      } else if (errorMsg.includes('Error sending confirmation email') || errorMsg.includes('smtp') || errorMsg.includes('Email link')) {
+        errorMsg = 'Error sending confirmation email. Standard email provider limit reached — please sign in directly with password or use Google/GitHub login.';
       } else if (errorMsg.includes('User not found')) {
-        errorMsg = 'No account found with this email address. Please sign up first.';
+        errorMsg = 'No account found with this email address. Please click "Sign up" below to create an account first.';
       }
-      
+
       setGlobalError(errorMsg);
     } finally {
       setLoading(false);
