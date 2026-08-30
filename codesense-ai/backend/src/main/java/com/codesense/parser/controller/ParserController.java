@@ -3,6 +3,7 @@ package com.codesense.parser.controller;
 import com.codesense.common.dto.ApiResponse;
 import com.codesense.integration.parser.dto.ParsedRepositoryDTO;
 import com.codesense.parser.service.CodeMetricsService;
+import com.codesense.parser.service.ArchitectureAnalysisService;
 import com.codesense.parser.service.DependencyAnalysisService;
 import com.codesense.parser.service.RepositoryParserService;
 import com.codesense.parser.service.UmlDiagramService;
@@ -12,6 +13,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import com.codesense.repository.repository.RepositoryRepo;
+import com.codesense.auth.repository.UserRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -39,6 +44,9 @@ public class ParserController {
     private final CodeMetricsService codeMetricsService;
     private final DependencyAnalysisService dependencyAnalysisService;
     private final UmlDiagramService umlDiagramService;
+    private final ArchitectureAnalysisService architectureAnalysisService;
+    private final RepositoryRepo repositoryRepo;
+    private final UserRepository userRepository;
 
     @PostMapping("/repositories/{repositoryId}/parse")
     @Operation(summary = "Parse all files in a repository (JavaParser + Tree-sitter)")
@@ -120,6 +128,34 @@ public class ParserController {
             "plantUml", plantUml,
             "mermaid", mermaid
         )));
+    }
+
+    @PostMapping("/repositories/{repositoryId}/architecture-analysis")
+    @Operation(summary = "Start evidence-backed system architecture analysis")
+    public ResponseEntity<ApiResponse<ArchitectureAnalysisService.JobView>> startArchitectureAnalysis(
+            @PathVariable UUID repositoryId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        requireRepositoryAccess(repositoryId, userDetails);
+        return ResponseEntity.accepted().body(ApiResponse.success(architectureAnalysisService.start(repositoryId)));
+    }
+
+    @GetMapping("/repositories/{repositoryId}/architecture-analysis/{jobId}")
+    @Operation(summary = "Get system architecture analysis progress or result")
+    public ResponseEntity<ApiResponse<ArchitectureAnalysisService.JobView>> getArchitectureAnalysis(
+            @PathVariable UUID repositoryId,
+            @PathVariable UUID jobId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        requireRepositoryAccess(repositoryId, userDetails);
+        return ResponseEntity.ok(ApiResponse.success(architectureAnalysisService.get(repositoryId, jobId)));
+    }
+
+    private void requireRepositoryAccess(UUID repositoryId, UserDetails userDetails) {
+        UUID userId = userRepository.findByEmail(userDetails.getUsername())
+            .map(user -> user.getId())
+            .orElse(null);
+        if (userId == null || repositoryRepo.findByIdAndProjectUserId(repositoryId, userId).isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Repository access denied");
+        }
     }
 
     // ─── Helper mappers ──────────────────────────────────────────────────────

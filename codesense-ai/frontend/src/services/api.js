@@ -137,5 +137,7 @@ export const parserApi = {
     return api.post(url);
   },
   getUmlDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/uml`),
-  getArchitectureDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture`)
+  getArchitectureDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture`),
+  startArchitectureAnalysis: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture-analysis`),
+  getArchitectureAnalysis: (repositoryId, jobId) => api.get(`/api/parser/repositories/${repositoryId}/architecture-analysis/${jobId}`)
 };

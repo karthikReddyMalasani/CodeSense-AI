@@ -2332,5 +2332,49 @@ pre {
 .observation { display: flex; align-items: center; gap: 9px; padding: 11px; border: 1px solid #fed7aa; border-radius: 8px; background: #fff7ed; color: #9a3412; font-size: 12px; }
 .observation span { flex: 1; } .observation small { font-size: 10px; font-weight: 700; }
 .metrics-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 70px 20px; text-align: center; color: var(--cs-text-muted); }
+.architecture-page { max-width: 1220px; margin: 0 auto; }
+.architecture-header { align-items: flex-start; }
+.architecture-header .page-title { display: flex; align-items: center; gap: 9px; }
+.architecture-controls { display: flex; gap: 10px; align-items: center; }
+.architecture-controls button { display: inline-flex; align-items: center; gap: 7px; }
+.architecture-locked { pointer-events: none; opacity: .55; }
+.architecture-progress { margin-top: 18px; padding: 26px; }
+.progress-heading { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+.progress-heading h2 { margin: 5px 0; font-size: 23px; }
+.progress-heading p, .architecture-summary p { color: var(--cs-text-muted); font-size: 13px; }
+.progress-number { color: var(--cs-primary); font-size: 42px; font-weight: 800; line-height: 1; }
+.progress-number small { font-size: 18px; }
+.architecture-progress-track { height: 9px; margin: 24px 0; border-radius: 8px; overflow: hidden; background: var(--cs-border-color); }
+.architecture-progress-track i { display: block; height: 100%; border-radius: inherit; background: var(--cs-primary-gradient); transition: width .35s ease; }
+.stage-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px 24px; }
+.stage-item { display: flex; align-items: center; gap: 9px; min-height: 31px; color: var(--cs-text-muted); font-size: 12px; }
+.stage-item small { margin-left: auto; font-size: 10px; }
+.stage-item.done { color: #16a34a; } .stage-item.active { color: var(--cs-primary); font-weight: 700; } .stage-item.active small { color: var(--cs-primary); }
+.stage-icon { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--cs-bg-subtle); }
+.stage-item.done .stage-icon { background: #dcfce7; } .stage-item.active .stage-icon { background: #e0e7ff; }
+.architecture-spin { animation: metrics-spin .8s linear infinite; }
+.failed-progress { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; color: #dc2626; }
+.failed-progress h2, .failed-progress p { color: var(--cs-text-main); }
+.architecture-summary { display: flex; justify-content: space-between; gap: 20px; margin-top: 18px; padding: 24px; color: var(--cs-primary); }
+.architecture-summary h2 { margin: 5px 0; color: var(--cs-text-main); font-size: 22px; }
+.architecture-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 14px; margin-top: 14px; }
+.architecture-grid > .card, .architecture-components, .architecture-result > .card:last-child { padding: 20px; }
+.architecture-section-title { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.architecture-section-title h3 { margin-top: 4px; font-size: 16px; }
+.evidence-pill { padding: 5px 8px; border-radius: 5px; background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 700; }
+.architecture-diagram pre { min-height: 160px; margin: 0; padding: 18px; overflow: auto; border-radius: 8px; background: #0f172a; color: #bae6fd; font-family: var(--font-mono); font-size: 12px; line-height: 1.8; }
+.technology-cloud { display: flex; flex-wrap: wrap; gap: 7px; }
+.technology-cloud span, .component-detail code { padding: 6px 9px; border: 1px solid var(--cs-border-color); border-radius: 5px; background: var(--cs-bg-subtle); color: var(--cs-text-main); font-size: 11px; }
+.flow-list { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }
+.architecture-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px; border-left: 3px solid var(--cs-primary); background: var(--cs-bg-subtle); font-size: 11px; }
+.architecture-flow span { color: var(--cs-primary); } .architecture-flow small { width: 100%; color: var(--cs-text-muted); }
+.architecture-components { margin-top: 14px; }
+.component-row { border-top: 1px solid var(--cs-border-color); }
+.component-row > button { display: flex; align-items: center; gap: 11px; width: 100%; padding: 12px 0; border: 0; background: none; color: var(--cs-text-main); text-align: left; cursor: pointer; }
+.component-row > button > span:nth-child(2) { flex: 1; } .component-row strong, .component-row small { display: block; } .component-row small { margin-top: 3px; color: var(--cs-text-muted); font-size: 11px; }
+.component-mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: #e0e7ff; color: var(--cs-primary); font-weight: 800; }
+.component-detail { padding: 0 0 13px 39px; } .component-detail > div { display: flex; flex-wrap: wrap; gap: 6px; } .component-detail p { margin-top: 8px; color: var(--cs-text-muted); font-size: 11px; } .component-detail p b { margin-right: 5px; color: #16a34a; } .component-detail p span { margin-left: 5px; font-family: var(--font-mono); }
+.api-inventory { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .api-inventory > div { display: grid; grid-template-columns: 72px 1fr; gap: 3px 9px; padding: 11px; border: 1px solid var(--cs-border-color); border-radius: 7px; } .api-inventory b { color: #2563eb; font-size: 10px; } .api-inventory span { font-family: var(--font-mono); font-size: 11px; } .api-inventory small { grid-column: 1 / -1; color: var(--cs-text-muted); font-size: 10px; }
+@media (max-width: 760px) { .architecture-header, .architecture-summary { flex-direction: column; } .architecture-controls { flex-wrap: wrap; } .stage-list, .architecture-grid, .api-inventory { grid-template-columns: 1fr; } .progress-number { font-size: 32px; } }
 @media (max-width: 1000px) { .metrics-card-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 700px) { .metrics-header, .metrics-hero { flex-direction: column; gap: 16px; align-items: stretch; } .metrics-actions { flex-wrap: wrap; } .metrics-actions .input { flex: 1; min-width: 180px; } .metrics-main-grid { grid-template-columns: 1fr; } .metrics-card-grid { grid-template-columns: repeat(2, 1fr); } .observation-list { grid-template-columns: 1fr; } }

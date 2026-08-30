@@ -1,370 +1,49 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AlertCircle, Check, ChevronDown, ChevronUp, Circle, Layers, Loader2, RefreshCw, ShieldCheck, X } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import { repositoryApi, parserApi, repoApi } from '../services/api';
-import { Layers, RefreshCw, AlertCircle } from 'lucide-react';
+import { repositoryApi, parserApi } from '../services/api';
 import ProjectSubNav from '../components/common/ProjectSubNav';
 
-// ── Parse mermaid output from backend into layer groups ──────────────────────
-function parseMermaidLayers(mermaid) {
-  if (typeof mermaid !== 'string' || !mermaid.trim()) return null;
-  const layers = [];
-  const subgraphRe = /subgraph\s+(\w+)([\s\S]*?)end/g;
-  let match;
-  while ((match = subgraphRe.exec(mermaid)) !== null) {
-    const name = match[1];
-    const body = match[2];
-    const nodeRe = /\s+\w+\[([^\]]+)\]/g;
-    const components = [];
-    let nm;
-    while ((nm = nodeRe.exec(body)) !== null) components.push(nm[1]);
-    if (components.length > 0) layers.push({ name, components });
-  }
-  return layers.length > 0 ? layers : null;
+const STAGES = ['Reading project structure', 'Scanning source files', 'Identifying application entry points', 'Detecting frameworks and technologies', 'Analyzing dependencies', 'Analyzing frontend architecture', 'Analyzing backend architecture', 'Analyzing API endpoints', 'Tracing frontend to backend communication', 'Analyzing services and business logic', 'Analyzing database/entities/repositories', 'Analyzing authentication and authorization', 'Detecting external APIs and third-party services', 'Analyzing file/data processing', 'Analyzing deployment and infrastructure configuration', 'Building component relationships', 'Understanding end-to-end application workflow', 'Designing system architecture', 'Generating architecture diagram', 'Finalizing architecture report'];
+
+function StageIcon({ state }) {
+  if (state === 'done') return <Check size={14} />;
+  if (state === 'active') return <Loader2 size={14} className="architecture-spin" />;
+  if (state === 'failed') return <X size={14} />;
+  return <Circle size={11} />;
 }
 
-// ── Infer layers from file list when parser has no classes ───────────────────
-function inferLayersFromFiles(files) {
-  const layers = {};
-  (Array.isArray(files) ? files : []).forEach(f => {
-    const p = (f.filePath || f.path || '').replace(/\\/g, '/');
-    const parts = p.split('/');
-    const dir = parts.length > 1 ? parts[0] : 'root';
-    const ext = p.split('.').pop().toLowerCase();
-    layers[dir] = layers[dir] || { components: new Set(), ext: new Set() };
-    layers[dir].components.add(parts[parts.length - 1]);
-    layers[dir].ext.add(ext);
-  });
-  return Object.entries(layers).map(([name, { components }]) => ({
-    name,
-    components: [...components].slice(0, 6)
-  }));
-}
-
-// ── Layer colour palette ─────────────────────────────────────────────────────
-const LAYER_COLORS = ['#38bdf8', '#4ade80', '#a78bfa', '#f43f5e', '#fbbf24', '#fb923c'];
-
-function LayerNode({ label, components, color, isTop, isBottom }) {
-  const safeComponents = Array.isArray(components) ? components : [];
-  return (
-    <div style={{
-      border: `2px solid ${color}`,
-      borderRadius: '10px',
-      background: 'var(--cs-btn-secondary-bg)',
-      padding: '14px 20px',
-      width: '100%',
-      maxWidth: '520px',
-      margin: '0 auto',
-      boxShadow: `0 0 14px ${color}22`
-    }}>
-      <div style={{ fontWeight: '800', fontSize: '14px', color, marginBottom: '8px', textAlign: 'center' }}>
-        {label}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
-        {safeComponents.slice(0, 8).map((c, i) => (
-          <span key={i} style={{
-            padding: '3px 9px',
-            background: `${color}18`,
-            border: `1px solid ${color}44`,
-            borderRadius: '6px',
-            fontSize: '11px',
-            fontFamily: 'var(--font-mono)',
-            fontWeight: '600',
-            color: 'var(--cs-text-main)'
-          }}>{c}</span>
-        ))}
-      </div>
+function ArchitectureResult({ result }) {
+  const [expanded, setExpanded] = useState(null);
+  if (!result) return null;
+  return <div className="architecture-result">
+    <section className="architecture-summary card"><div><span className="eyebrow">Evidence-backed assessment</span><h2>{result.architectureStyle}</h2><p>{result.summary}</p></div><ShieldCheck size={28} /></section>
+    <div className="architecture-grid">
+      <section className="card architecture-diagram"><div className="architecture-section-title"><div><span className="eyebrow">System map</span><h3>Component relationships</h3></div><span className="evidence-pill">Derived from source</span></div><pre>{result.mermaid}</pre></section>
+      <section className="card"><div className="architecture-section-title"><div><span className="eyebrow">Detected stack</span><h3>Technologies</h3></div></div><div className="technology-cloud">{(result.technologies || []).map(technology => <span key={technology}>{technology}</span>)}</div><div className="flow-list">{(result.flows || []).map(flow => <div className="architecture-flow" key={`${flow.from}-${flow.to}`}><strong>{flow.from}</strong><span>→</span><strong>{flow.to}</strong><small>{flow.evidence}</small></div>)}</div></section>
     </div>
-  );
+    <section className="card architecture-components"><div className="architecture-section-title"><div><span className="eyebrow">Source inventory</span><h3>Major components</h3></div><span className="panel-caption">{result.components?.length || 0} detected</span></div>{(result.components || []).map((component, index) => <div className="component-row" key={component.name}><button onClick={() => setExpanded(expanded === index ? null : index)}><span className="component-mark">{component.name.slice(0, 1)}</span><span><strong>{component.name}</strong><small>{component.purpose} · {component.technology}</small></span>{expanded === index ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button>{expanded === index && <div className="component-detail"><div>{component.files?.map(file => <code key={file}>{file}</code>)}</div>{component.evidence?.map(item => <p key={`${item.filePath}-${item.symbol}`}><b>{item.confidence}</b> {item.reason} <span>{item.filePath}{item.line ? `:${item.line}` : ''}</span></p>)}</div>}</div>)}</section>
+    <section className="card"><div className="architecture-section-title"><div><span className="eyebrow">API inventory</span><h3>Discovered endpoints</h3></div><span className="panel-caption">{result.apis?.length || 0} detected</span></div>{result.apis?.length ? <div className="api-inventory">{result.apis.map((api, index) => <div key={`${api.sourceFile}-${index}`}><b>{api.method}</b><span>{api.endpoint}</span><small>{api.controller} · {api.sourceFile}</small></div>)}</div> : <p className="panel-placeholder">No mapping annotations were found in the parsed source.</p>}</section>
+  </div>;
 }
 
-function ConnectorArrow({ label }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px', margin: '4px 0' }}>
-      <div style={{ width: '2px', height: '18px', background: 'var(--cs-border-hover)' }} />
-      {label && <div style={{ fontSize: '10px', color: 'var(--cs-text-muted)', whiteSpace: 'nowrap' }}>{label}</div>}
-      <div style={{ fontSize: '16px', color: 'var(--cs-text-muted)', lineHeight: 1 }}>▼</div>
-    </div>
-  );
-}
-
-function ArchDiagram({ repoName, language, layers }) {
-  const safeLayers = Array.isArray(layers)
-    ? layers.filter(layer => layer && Array.isArray(layer.components))
-    : [];
-  // Derive a meaningful label for each layer
-  const LAYER_LABELS = {
-    'Controllers': '🌐 Controller Layer',
-    'Services': '⚙️  Service Layer',
-    'Repositories': '🗄️  Repository / Data Layer',
-    'Models': '📦 Model / Entity Layer',
-    'Components': '🧩 Component Layer',
-    'Pages': '📄 Page Layer',
-    'Utils': '🔧 Utility Layer',
-  };
-
-  const getLabel = (name) => LAYER_LABELS[name] || `📁 ${name}`;
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 0,
-      padding: '28px 24px',
-      width: '100%'
-    }}>
-      {/* Entry point node */}
-      <div style={{
-        border: '2px solid #818cf8',
-        borderRadius: '10px',
-        background: 'var(--cs-btn-secondary-bg)',
-        padding: '10px 28px',
-        fontWeight: '800',
-        fontSize: '14px',
-        color: '#818cf8',
-        boxShadow: '0 0 14px #818cf822',
-        textAlign: 'center'
-      }}>
-        👤 Client / User Request
-      </div>
-      <ConnectorArrow label="HTTP / REST" />
-
-      {safeLayers.map((layer, idx) => (
-        <React.Fragment key={idx}>
-          <LayerNode
-            label={getLabel(layer.name)}
-            components={layer.components}
-            color={LAYER_COLORS[idx % LAYER_COLORS.length]}
-          />
-          {idx < safeLayers.length - 1 && <ConnectorArrow label="" />}
-        </React.Fragment>
-      ))}
-
-      <ConnectorArrow label="" />
-
-      {/* Database node — always last */}
-      <div style={{
-        border: '2px solid #f43f5e',
-        borderRadius: '10px',
-        background: 'var(--cs-btn-secondary-bg)',
-        padding: '10px 28px',
-        fontWeight: '800',
-        fontSize: '14px',
-        color: '#f43f5e',
-        boxShadow: '0 0 14px #f43f5e22',
-        textAlign: 'center'
-      }}>
-        🗄️  Data Store / External Services
-      </div>
-    </div>
-  );
-}
-
-// ── Empty state for repos with no parseable structure ────────────────────────
-function SimpleFileDiagram({ files, repoName, language }) {
-  const byDir = {};
-  (Array.isArray(files) ? files : []).forEach(f => {
-    const p = (f.filePath || f.path || '').replace(/\\/g, '/');
-    const dir = p.includes('/') ? p.split('/')[0] : '(root)';
-    byDir[dir] = byDir[dir] || [];
-    byDir[dir].push(p.split('/').pop());
-  });
-
-  const dirs = Object.entries(byDir).slice(0, 6);
-
-  if (dirs.length === 0) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--cs-text-muted)' }}>
-        <AlertCircle style={{ width: 32, height: 32, marginBottom: 12 }} />
-        <div>No parseable file structure found.</div>
-      </div>
-    );
-  }
-
-  return (
-    <ArchDiagram
-      repoName={repoName}
-      language={language}
-      layers={dirs.map(([dir, files]) => ({ name: dir, components: files.slice(0, 6) }))}
-    />
-  );
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function ArchitecturePage() {
   const { id: projectId } = useParams();
   const [repositories, setRepositories] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState(null);
-  const [archData, setArchData] = useState(null);   // { layers, files }
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const [job, setJob] = useState(null);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    repositoryApi.list(projectId).then(res => {
-      const repos = Array.isArray(res.data?.data) ? res.data.data : [];
-      setRepositories(repos);
-      if (repos.length > 0) {
-        setSelectedRepo(repos[0]);
-        loadArchitecture(repos[0]);
-      } else {
-        setLoading(false);
-      }
-    }).catch(() => setLoading(false));
-  }, [projectId]);
-
-  const loadArchitecture = async (repo) => {
-    setGenerating(true);
-    setError('');
-    try {
-      // 1. Try to get parsed architecture (mermaid layers) from the parser API
-      const archRes = await parserApi.getArchitectureDiagrams(repo.id);
-      const mermaid = archRes.data?.data?.mermaid || '';
-      const layers = parseMermaidLayers(mermaid);
-
-      // 2. Get the repo's file list for fallback / extra context
-      let files = [];
-      try {
-        const fRes = await repoApi.getFiles(repo.id);
-        files = Array.isArray(fRes.data?.data) ? fRes.data.data : [];
-      } catch { /* ok */ }
-
-      if (layers && layers.length > 0) {
-        setArchData({ layers, files, source: 'parsed' });
-      } else {
-        // Fallback: derive layers from the directory structure of the file list
-        const dirLayers = inferLayersFromFiles(files);
-        setArchData({ layers: dirLayers.length > 0 ? dirLayers : null, files, source: 'files' });
-      }
-    } catch {
-      // Parser failed entirely — use file list only
-      try {
-        const fRes = await repoApi.getFiles(repo.id);
-        const files = Array.isArray(fRes.data?.data) ? fRes.data.data : [];
-        const dirLayers = inferLayersFromFiles(files);
-        setArchData({ layers: dirLayers.length > 0 ? dirLayers : null, files, source: 'files' });
-      } catch {
-        setError('Could not load repository structure. Make sure the repository is ingested.');
-        setArchData(null);
-      }
-    } finally {
-      setGenerating(false);
-      setLoading(false);
-    }
-  };
-
-  if (loading) return <div className="loading-center"><div className="cs-spinner" style={{ width: '24px', height: '24px' }} /></div>;
-
-  return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: '24px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Layers style={{ color: 'var(--cs-primary)' }} /> Repository Architecture
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--cs-text-muted)', marginTop: '4px' }}>
-            Visual layer diagram generated from the repository's actual code structure
-          </p>
-        </div>
-
-        {repositories.length > 1 && (
-          <select className="input" style={{ width: '220px' }}
-            value={selectedRepo?.id || ''}
-            onChange={(e) => {
-              const repo = repositories.find(r => r.id === e.target.value);
-              if (repo) { setSelectedRepo(repo); loadArchitecture(repo); }
-            }}
-          >
-            {repositories.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        )}
-      </div>
-
-      <ProjectSubNav activeTab="architecture" />
-
-      {error && <div className="cs-alert cs-alert-danger">⚠️ {error}</div>}
-
-      {selectedRepo && (
-        <div className="cs-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px' }}>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--cs-text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Repository</div>
-            <div style={{ fontSize: '16px', fontWeight: '700', marginTop: '2px' }}>{selectedRepo.name}</div>
-            <div style={{ fontSize: '12px', color: 'var(--cs-text-muted)', marginTop: '4px' }}>
-              Language: <strong>{selectedRepo.primaryLanguage || '—'}</strong>
-              {' • '}Files: <strong>{selectedRepo.totalFiles || archData?.files?.length || '—'}</strong>
-              {' • '}Source: <strong style={{ color: '#4ade80' }}>
-                {archData?.source === 'parsed' ? '🔍 Live Parse' : '📁 File Structure'}
-              </strong>
-            </div>
-          </div>
-          <button className="cs-btn-gradient" onClick={() => loadArchitecture(selectedRepo)} disabled={generating}>
-            <RefreshCw style={{ width: '16px', height: '16px' }} className={generating ? 'cs-spinner' : ''} />
-            {generating ? 'Analyzing...' : 'Re-analyze'}
-          </button>
-        </div>
-      )}
-
-      {/* Architecture Diagram */}
-      <div className="cs-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--cs-border-color)' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: '700' }}>
-            🏛️ {selectedRepo?.name || 'Repository'} — Architecture Diagram
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--cs-text-muted)', marginTop: '4px' }}>
-            {archData?.source === 'parsed'
-              ? 'Layers detected from class annotations and naming conventions in your code'
-              : 'Directory structure derived from repository files'}
-          </p>
-        </div>
-
-        {generating ? (
-          <div className="loading-center" style={{ padding: '48px' }}>
-            <div className="cs-spinner" style={{ width: '24px', height: '24px' }} />
-            <div style={{ marginTop: '12px', color: 'var(--cs-text-muted)', fontSize: '13px' }}>Parsing repository structure...</div>
-          </div>
-        ) : archData?.layers ? (
-          <ArchDiagram
-            repoName={selectedRepo?.name}
-            language={selectedRepo?.primaryLanguage}
-            layers={archData.layers}
-          />
-        ) : (
-          <SimpleFileDiagram
-            files={archData?.files || []}
-            repoName={selectedRepo?.name}
-            language={selectedRepo?.primaryLanguage}
-          />
-        )}
-      </div>
-
-      {/* Layer component breakdown cards */}
-      {archData?.layers && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-          {archData.layers.map((layer, idx) => (
-            <div key={idx} className="cs-card" style={{ borderTop: `3px solid ${LAYER_COLORS[idx % LAYER_COLORS.length]}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <h4 style={{ fontWeight: '700', fontSize: '14px' }}>{layer.name}</h4>
-                <span style={{
-                  fontSize: '10px', padding: '2px 8px', borderRadius: '12px',
-                  background: `${LAYER_COLORS[idx % LAYER_COLORS.length]}22`,
-                  color: LAYER_COLORS[idx % LAYER_COLORS.length], fontWeight: '700'
-                }}>{layer.components.length} components</span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {layer.components.map((c, i) => (
-                  <span key={i} style={{
-                    padding: '4px 10px', background: 'var(--cs-btn-secondary-bg)',
-                    border: '1px solid var(--cs-border-color)', borderRadius: '6px',
-                    fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: '600',
-                    color: 'var(--cs-text-main)'
-                  }}>{c}</span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  const pollRef = useRef(null);
+  const poll = async (repo, jobId) => { try { const response = await parserApi.getArchitectureAnalysis(repo.id, jobId); const next = response.data.data || response.data; setJob(next); if (next.status === 'QUEUED' || next.status === 'RUNNING') pollRef.current = setTimeout(() => poll(repo, jobId), 900); } catch { setError('Architecture analysis could not be read. Retry the analysis.'); } };
+  const startAnalysis = async repo => { if (!repo || job?.status === 'RUNNING' || job?.status === 'QUEUED') return; setError(''); setJob(null); try { const response = await parserApi.startArchitectureAnalysis(repo.id); const started = response.data.data || response.data; setJob(started); poll(repo, started.jobId); } catch { setError('Architecture analysis failed to start.'); } };
+  useEffect(() => { repositoryApi.list(projectId).then(response => { const repos = response.data.data || []; setRepositories(repos); if (repos.length) setSelectedRepo(repos[0]); }).catch(() => setError('Unable to load repositories.')); return () => clearTimeout(pollRef.current); }, [projectId]);
+  useEffect(() => { if (selectedRepo) startAnalysis(selectedRepo); }, [selectedRepo]);
+  const running = job?.status === 'QUEUED' || job?.status === 'RUNNING';
+  const progress = job ? Math.round((job.completedStages / job.totalStages) * 100) : 0;
+  return <div className="architecture-page">
+    <div className="page-header architecture-header"><div><div className="page-title"><Layers size={22} /> System architecture</div><div className="page-subtitle">A source-derived map of components, flows, APIs, and infrastructure</div></div><div className="architecture-controls">{repositories.length > 0 && <select className="input" value={selectedRepo?.id || ''} disabled={running} onChange={event => setSelectedRepo(repositories.find(repo => repo.id === event.target.value))}>{repositories.map(repo => <option key={repo.id} value={repo.id}>{repo.name}</option>)}</select>}{job?.status === 'FAILED' && <button className="btn btn-secondary" onClick={() => startAnalysis(selectedRepo)}><RefreshCw size={15} /> Retry analysis</button>}</div></div>
+    <div className={running ? 'architecture-locked' : ''}><ProjectSubNav activeTab="architecture" /></div>
+    {error && <div className="cs-alert cs-alert-danger">{error}</div>}
+    {running ? <section className="architecture-progress card"><div className="progress-heading"><div><span className="eyebrow">Deep analysis in progress</span><h2>{selectedRepo?.name}</h2><p>Reading evidence from the uploaded project. Navigation is locked until this run completes.</p></div><div className="progress-number">{progress}<small>%</small></div></div><div className="architecture-progress-track"><i style={{ width: `${progress}%` }} /></div><div className="stage-list">{STAGES.map((stage, index) => { const state = index < (job?.completedStages || 0) ? 'done' : index === (job?.completedStages || 0) ? 'active' : 'pending'; return <div className={`stage-item ${state}`} key={stage}><span className="stage-icon"><StageIcon state={state} /></span><span>{stage}</span>{state !== 'pending' && <small>{state === 'done' ? 'Complete' : 'Analyzing'}</small>}</div>; })}</div></section> : job?.status === 'FAILED' ? <section className="architecture-progress card failed-progress"><AlertCircle size={30} /><h2>Analysis failed</h2><p>{job.error || 'The backend could not complete this analysis.'}</p><button className="btn btn-primary" onClick={() => startAnalysis(selectedRepo)}>Retry analysis</button></section> : job?.status === 'COMPLETED' ? <ArchitectureResult result={job.result} /> : <div className="architecture-progress card"><Loader2 className="architecture-spin" /><p>Preparing analysis...</p></div>}
+  </div>;
 }
