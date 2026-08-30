@@ -81,48 +81,55 @@ const ProjectTreeExplorer = ({ onFileSelect }) => {
     }
   };
 
+  const buildFileTree = (files) => {
+    if (!Array.isArray(files)) return [];
+
+    const root = { name: 'root', type: 'folder', children: {}, files: [] };
+
+    files.forEach(file => {
+      const pathParts = (file.path || file.name || '').split('/').filter(Boolean);
+      if (pathParts.length === 0) return;
+
+      let current = root;
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        const folderName = pathParts[i];
+        if (!current.children[folderName]) {
+          current.children[folderName] = {
+            name: folderName,
+            type: 'folder',
+            children: {},
+            files: []
+          };
+        }
+        current = current.children[folderName];
+      }
+
+      const fileName = pathParts[pathParts.length - 1];
+      current.files.push({ ...file, displayName: fileName });
+    });
+
+    return root;
+  };
+
   const loadRepositoryFiles = async (repoId) => {
     try {
       const res = await repositoryApi.getFiles(repoId);
       const files = res.data.data || [];
       setRepoFiles(prev => ({
         ...prev,
-        [repoId]: organizeFilesByFolder(files)
+        [repoId]: buildFileTree(files)
       }));
     } catch (err) {
       console.error(`Failed to load files for repository ${repoId}:`, err);
-      setRepoFiles(prev => ({ ...prev, [repoId]: [] }));
+      setRepoFiles(prev => ({ ...prev, [repoId]: null }));
     }
   };
 
-  const organizeFilesByFolder = (files) => {
-    if (!Array.isArray(files)) return [];
-    
-    const folderMap = {};
-    const rootFiles = [];
-
-    files.forEach(file => {
-      const path = file.path || '';
-      const parts = path.split('/');
-
-      if (parts.length === 1) {
-        rootFiles.push(file);
-      } else {
-        const folder = parts[0];
-        if (!folderMap[folder]) {
-          folderMap[folder] = [];
-        }
-        folderMap[folder].push(file);
-      }
-    });
-
-    return { folderMap, rootFiles };
-  };
-
   const getFileIcon = (fileName) => {
-    if (fileName.endsWith('.java') || fileName.endsWith('.py') || fileName.endsWith('.js') 
-        || fileName.endsWith('.ts') || fileName.endsWith('.tsx') || fileName.endsWith('.jsx') 
-        || fileName.endsWith('.cpp') || fileName.endsWith('.c')) {
+    if (!fileName) return <FileText className="tree-file-icon doc" />;
+    if (fileName.endsWith('.java') || fileName.endsWith('.py') || fileName.endsWith('.js')
+      || fileName.endsWith('.ts') || fileName.endsWith('.tsx') || fileName.endsWith('.jsx')
+      || fileName.endsWith('.cpp') || fileName.endsWith('.c')) {
       return <FileCode className="tree-file-icon code" />;
     }
     if (fileName.endsWith('.json')) {
@@ -134,71 +141,71 @@ const ProjectTreeExplorer = ({ onFileSelect }) => {
     return <FileText className="tree-file-icon doc" />;
   };
 
-  const renderFileTree = (files, repoId, parentPath = '') => {
-    if (!files) return null;
+  const RecursiveTreeNode = ({ node, repoId, pathPrefix = '', depth = 0 }) => {
+    if (!node) return null;
 
-    const { folderMap, rootFiles } = files;
+    const folderEntries = Object.entries(node.children || {});
+    const sortedFolders = folderEntries.sort(([a], [b]) => a.localeCompare(b));
+    const sortedFiles = [...(node.files || [])].sort((a, b) => a.displayName.localeCompare(b.displayName));
 
     return (
-      <>
-        {/* Render root files */}
-        {rootFiles.map(file => (
-          <div
-            key={`file-${file.id}`}
-            className="tree-file-item"
-            onClick={() => onFileSelect?.(file)}
-          >
-            <div className="tree-node-content">
-              <span className="tree-item-spacer" />
-              {getFileIcon(file.name)}
-              <span className="tree-item-name">{file.name}</span>
-            </div>
-          </div>
-        ))}
-
-        {/* Render folders */}
-        {Object.entries(folderMap).map(([folderName, folderFiles]) => {
-          const folderId = `folder-${repoId}-${folderName}`;
+      <div className="tree-node-group">
+        {/* Render Folders */}
+        {sortedFolders.map(([folderName, folderNode]) => {
+          const folderPath = `${pathPrefix}/${folderName}`;
+          const folderId = `folder-${repoId}-${folderPath}`;
           const isExpanded = expandedNodes[folderId];
+          const totalChildFiles = folderNode.files.length + Object.keys(folderNode.children).length;
 
           return (
-            <div key={folderId}>
+            <div key={folderId} className="tree-folder-wrapper">
               <div
                 className="tree-folder-item"
+                style={{ paddingLeft: `${depth * 14 + 8}px` }}
                 onClick={() => toggleNode(folderId)}
               >
                 <div className="tree-node-content">
                   <button className="tree-toggle-btn">
-                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
-                  {isExpanded ? <FolderOpen size={16} /> : <Folder size={16} />}
-                  <span className="tree-item-name">{folderName}/</span>
-                  <span className="tree-item-count">({folderFiles.length})</span>
+                  {isExpanded ? <FolderOpen size={16} className="folder-icon open" /> : <Folder size={16} className="folder-icon" />}
+                  <span className="tree-item-name">{folderName}</span>
                 </div>
               </div>
 
               {isExpanded && (
-                <div className="tree-folder-contents">
-                  {folderFiles.map(file => (
-                    <div
-                      key={`file-${file.id}`}
-                      className="tree-file-item"
-                      onClick={() => onFileSelect?.(file)}
-                    >
-                      <div className="tree-node-content">
-                        <span className="tree-item-spacer" />
-                        {getFileIcon(file.name)}
-                        <span className="tree-item-name">{file.name}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <RecursiveTreeNode
+                  node={folderNode}
+                  repoId={repoId}
+                  pathPrefix={folderPath}
+                  depth={depth + 1}
+                />
               )}
             </div>
           );
         })}
-      </>
+
+        {/* Render Files */}
+        {sortedFiles.map(file => (
+          <div
+            key={`file-${file.id}`}
+            className="tree-file-item"
+            style={{ paddingLeft: `${depth * 14 + 26}px` }}
+            onClick={() => onFileSelect?.(file)}
+          >
+            <div className="tree-node-content">
+              {getFileIcon(file.displayName || file.name)}
+              <span className="tree-item-name">{file.displayName || file.name}</span>
+            </div>
+          </div>
+        ))}
+      </div>
     );
+  };
+
+  const renderFileTree = (rootNode, repoId) => {
+    if (!rootNode) return null;
+    return <RecursiveTreeNode node={rootNode} repoId={repoId} depth={0} />;
   };
 
   if (loading) {
