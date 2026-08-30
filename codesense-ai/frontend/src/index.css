@@ -7,6 +7,8 @@
 :root {
   --cs-bg-main: #f8fafc;
   --cs-bg-card: #ffffff;
+  --cs-card-bg: #ffffff;
+  --cs-bg-subtle: #f8fafc;
   --cs-sidebar-bg: #0b0f19;
   --cs-sidebar-hover: #1e293b;
   --cs-sidebar-text: #94a3b8;
@@ -18,10 +20,12 @@
   --cs-text-light: #94a3b8;
 
   --cs-border-color: #e2e8f0;
+  --cs-border: rgba(15, 23, 42, 0.12);
   --cs-border-hover: #cbd5e1;
 
   --cs-primary: #6366f1;
   --cs-primary-hover: #4f46e5;
+  --cs-primary-light: #93c5fd;
   --cs-primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
 
   --cs-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -43,6 +47,8 @@ body[data-theme='dark'],
 [data-theme='dark'] {
   --cs-bg-main: #0f172a;
   --cs-bg-card: #1e293b;
+  --cs-card-bg: #1e293b;
+  --cs-bg-subtle: #111827;
   --cs-sidebar-bg: #0b0f19;
   --cs-sidebar-hover: #1e293b;
   --cs-sidebar-text: #cbd5e1;
@@ -52,6 +58,7 @@ body[data-theme='dark'],
   --cs-text-muted: #94a3b8;
   --cs-text-light: #cbd5e1;
   --cs-border-color: #334155;
+  --cs-border: rgba(148, 163, 184, 0.2);
   --cs-border-hover: #475569;
   --cs-input-bg: #0f172a;
   --cs-btn-secondary-bg: #1e293b;
