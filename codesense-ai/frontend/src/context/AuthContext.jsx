@@ -97,6 +97,23 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
+    // Try direct Spring Boot backend login first
+    try {
+      const res = await authApi.login({ email: email.trim(), password });
+      const { token: newToken, ...userData } = res.data.data;
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+      setUser(userData);
+      return userData;
+    } catch (backendError) {
+      console.warn('Backend login error:', backendError);
+      // If backend returns a clear error message (e.g. Bad credentials), throw it directly
+      if (backendError.response?.data?.message) {
+        throw new Error(backendError.response.data.message);
+      }
+    }
+
+    // Fallback to Supabase login / legacy verification
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw error;
@@ -109,9 +126,9 @@ export function AuthProvider({ children }) {
           email: email.trim(),
           password
         });
-        
+
         const legacyData = legacyResponse.data.data;
-        
+
         // Legacy account found - now create Supabase account with same credentials
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: legacyData.email,
@@ -121,13 +138,13 @@ export function AuthProvider({ children }) {
             emailRedirectTo: `${window.location.origin}/dashboard`
           }
         });
-        
+
         if (signUpError) {
           // If account already exists in Supabase, try signing in
           if (signUpError.message?.includes('already registered')) {
-            const { data, error } = await supabase.auth.signInWithPassword({ 
-              email: legacyData.email, 
-              password 
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email: legacyData.email,
+              password
             });
             if (error) throw error;
             return exchangeSession(data.session);
@@ -168,7 +185,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const register = async (name, email, password) => {
+  // signUpWithVerification: sends Supabase verification email.
+  // Backend account is created automatically when user clicks the email link
+  // (handled via onAuthStateChange -> exchangeSession -> authApi.socialLogin)
+  const signUpWithVerification = async (name, email, password) => {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -178,14 +198,37 @@ export function AuthProvider({ children }) {
       }
     });
     if (error) throw error;
-    if (!data.session) {
-      throw new Error('Account created. Verify your email using the link we sent, then return here to sign in.');
-    }
-    if (!data.user?.email_confirmed_at && !data.user?.confirmed_at) {
+
+    // If Supabase returns a session immediately (email confirmations disabled in Supabase dashboard)
+    // still force email verification by signing out and asking user to check email
+    if (data.session && !data.user?.email_confirmed_at) {
       await supabase.auth.signOut();
-      throw new Error('Account created. Verify your email using the link we sent before continuing.');
     }
-    return exchangeSession(data.session, name);
+
+    // Return info for UI — user must click the email link
+    return { email: email.trim(), name: name.trim() };
+  };
+
+  const register = async (name, email, password) => {
+    // Register directly in local backend database
+    try {
+      const res = await authApi.register({
+        name: name.trim(),
+        email: email.trim(),
+        password
+      });
+      const { token: newToken, ...userData } = res.data.data;
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+      setUser(userData);
+      return userData;
+    } catch (backendError) {
+      console.warn('Backend register error:', backendError);
+      if (backendError.response?.data?.message) {
+        throw new Error(backendError.response.data.message);
+      }
+      throw backendError;
+    }
   };
 
   const sendMagicLink = async (email) => {
@@ -212,7 +255,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, sendMagicLink, socialLogin, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, signUpWithVerification, sendMagicLink, socialLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

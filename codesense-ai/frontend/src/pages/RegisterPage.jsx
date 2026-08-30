@@ -5,9 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/LoginPage.css';
 
 export default function RegisterPage() {
-  const { register, socialLogin } = useAuth();
+  const { signUpWithVerification, sendMagicLink, socialLogin } = useAuth();
   const navigate = useNavigate();
 
+  // step: 'form' | 'verify-email' | 'done'
+  const [step, setStep] = useState('form');
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -34,31 +36,26 @@ export default function RegisterPage() {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!form.name.trim()) {
       newErrors.name = 'Full name is required';
     } else if (form.name.trim().length < 2) {
       newErrors.name = 'Name must be at least 2 characters';
     }
-
     if (!form.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-
     if (!form.password) {
       newErrors.password = 'Password is required';
     } else if (form.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
-
     if (!form.confirm) {
       newErrors.confirm = 'Please confirm your password';
     } else if (form.password !== form.confirm) {
       newErrors.confirm = 'Passwords do not match';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -66,17 +63,34 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setGlobalError('');
-
     if (!validateForm()) return;
 
     setLoading(true);
     try {
-      await register(form.name, form.email, form.password);
-      navigate('/dashboard');
+      // Always send verification email first — backend account created after email link click
+      await signUpWithVerification(form.name, form.email, form.password);
+      setStep('verify-email');
     } catch (err) {
-      const data = err.response?.data;
-      const msg = data?.fieldErrors?.[0]?.message || data?.message || err.message || 'Registration failed. Check backend connection or try a different email.';
-      setGlobalError(msg);
+      const errMsg = err.message || '';
+      if (errMsg.toLowerCase().includes('already registered') || errMsg.toLowerCase().includes('already exist')) {
+        setGlobalError('An account with this email already exists. Please sign in instead.');
+      } else if (errMsg.includes('rate limit') || errMsg.includes('429')) {
+        setGlobalError('Email rate limit reached. Please wait a few minutes and try again.');
+      } else {
+        setGlobalError(errMsg || 'Registration failed. Please check your details and try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendLink = async () => {
+    setGlobalError('');
+    setLoading(true);
+    try {
+      await signUpWithVerification(form.name, form.email, form.password);
+    } catch (err) {
+      setGlobalError('Could not resend email. Please wait a moment and try again.');
     } finally {
       setLoading(false);
     }
@@ -166,115 +180,143 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="cs-auth-form" noValidate style={{ gap: '14px' }}>
-
-              {/* Full Name Field */}
-              <div className="cs-form-field">
-                <label className="cs-field-label" htmlFor="reg-name">Full Name</label>
-                <div className={`cs-input-box ${errors.name ? 'error' : ''}`}>
-                  <User className="cs-input-icon-left" />
-                  <input
-                    id="reg-name"
-                    type="text"
-                    className="cs-input-control"
-                    placeholder="John Doe"
-                    value={form.name}
-                    onChange={(e) => {
-                      setForm({ ...form, name: e.target.value });
-                      if (errors.name) setErrors({ ...errors, name: null });
-                    }}
-                  />
+            {/* Form / Verify Email */}
+            {step === 'form' ? (
+              <form onSubmit={handleSubmit} className="cs-auth-form" noValidate style={{ gap: '14px' }}>
+                {/* Full Name Field */}
+                <div className="cs-form-field">
+                  <label className="cs-field-label" htmlFor="reg-name">Full Name</label>
+                  <div className={`cs-input-box ${errors.name ? 'error' : ''}`}>
+                    <User className="cs-input-icon-left" />
+                    <input
+                      id="reg-name"
+                      type="text"
+                      className="cs-input-control"
+                      placeholder="John Doe"
+                      value={form.name}
+                      onChange={(e) => {
+                        setForm({ ...form, name: e.target.value });
+                        if (errors.name) setErrors({ ...errors, name: null });
+                      }}
+                    />
+                  </div>
+                  {errors.name && <div className="cs-field-error-text">{errors.name}</div>}
                 </div>
-                {errors.name && <div className="cs-field-error-text">{errors.name}</div>}
-              </div>
 
-              {/* Email Field */}
-              <div className="cs-form-field">
-                <label className="cs-field-label" htmlFor="reg-email">Email Address</label>
-                <div className={`cs-input-box ${errors.email ? 'error' : ''}`}>
-                  <Mail className="cs-input-icon-left" />
-                  <input
-                    id="reg-email"
-                    type="email"
-                    className="cs-input-control"
-                    placeholder="you@example.com"
-                    value={form.email}
-                    onChange={(e) => {
-                      setForm({ ...form, email: e.target.value });
-                      if (errors.email) setErrors({ ...errors, email: null });
-                    }}
-                  />
+                {/* Email Field */}
+                <div className="cs-form-field">
+                  <label className="cs-field-label" htmlFor="reg-email">Email Address</label>
+                  <div className={`cs-input-box ${errors.email ? 'error' : ''}`}>
+                    <Mail className="cs-input-icon-left" />
+                    <input
+                      id="reg-email"
+                      type="email"
+                      className="cs-input-control"
+                      placeholder="you@example.com"
+                      value={form.email}
+                      onChange={(e) => {
+                        setForm({ ...form, email: e.target.value });
+                        if (errors.email) setErrors({ ...errors, email: null });
+                      }}
+                    />
+                  </div>
+                  {errors.email && <div className="cs-field-error-text">{errors.email}</div>}
                 </div>
-                {errors.email && <div className="cs-field-error-text">{errors.email}</div>}
-              </div>
 
-              {/* Password Field */}
-              <div className="cs-form-field">
-                <label className="cs-field-label" htmlFor="reg-password">Password</label>
-                <div className={`cs-input-box ${errors.password ? 'error' : ''}`}>
-                  <Lock className="cs-input-icon-left" />
-                  <input
-                    id="reg-password"
-                    type={showPassword ? 'text' : 'password'}
-                    className="cs-input-control has-toggle"
-                    placeholder="Min. 8 characters"
-                    value={form.password}
-                    onChange={(e) => {
-                      setForm({ ...form, password: e.target.value });
-                      if (errors.password) setErrors({ ...errors, password: null });
-                    }}
-                  />
+                {/* Password Field */}
+                <div className="cs-form-field">
+                  <label className="cs-field-label" htmlFor="reg-password">Password</label>
+                  <div className={`cs-input-box ${errors.password ? 'error' : ''}`}>
+                    <Lock className="cs-input-icon-left" />
+                    <input
+                      id="reg-password"
+                      type={showPassword ? 'text' : 'password'}
+                      className="cs-input-control has-toggle"
+                      placeholder="Min. 8 characters"
+                      value={form.password}
+                      onChange={(e) => {
+                        setForm({ ...form, password: e.target.value });
+                        if (errors.password) setErrors({ ...errors, password: null });
+                      }}
+                    />
+                    <button type="button" className="cs-toggle-eye-btn" onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {errors.password && <div className="cs-field-error-text">{errors.password}</div>}
+                </div>
+
+                {/* Confirm Password Field */}
+                <div className="cs-form-field">
+                  <label className="cs-field-label" htmlFor="reg-confirm">Confirm Password</label>
+                  <div className={`cs-input-box ${errors.confirm ? 'error' : ''}`}>
+                    <Lock className="cs-input-icon-left" />
+                    <input
+                      id="reg-confirm"
+                      type={showConfirm ? 'text' : 'password'}
+                      className="cs-input-control has-toggle"
+                      placeholder="Repeat password"
+                      value={form.confirm}
+                      onChange={(e) => {
+                        setForm({ ...form, confirm: e.target.value });
+                        if (errors.confirm) setErrors({ ...errors, confirm: null });
+                      }}
+                    />
+                    <button type="button" className="cs-toggle-eye-btn" onClick={() => setShowConfirm(!showConfirm)}>
+                      {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {errors.confirm && <div className="cs-field-error-text">{errors.confirm}</div>}
+                </div>
+
+                <button type="submit" className="cs-btn-submit-primary" disabled={loading} style={{ marginTop: '8px' }}>
+                  {loading ? <span className="cs-btn-spinner" /> : 'Create Account'}
+                </button>
+              </form>
+            ) : (
+              /* Verify Email Step */
+              <div className="cs-auth-form" style={{ gap: '20px', display: 'flex', flexDirection: 'column' }}>
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'flex-start'
+                }}>
+                  <span style={{ fontSize: '22px' }}>📩</span>
+                  <div>
+                    <div style={{ fontWeight: '600', marginBottom: '4px', color: 'var(--cs-text-main)' }}>Check your email</div>
+                    <div style={{ fontSize: '13px', color: 'var(--cs-text-muted)', lineHeight: '1.5' }}>
+                      We sent a secure sign-in link to <strong>{form.email}</strong>. Click the link in the email to verify your account and log in.
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '13px', color: 'var(--cs-text-muted)', textAlign: 'center' }}>
+                  Didn't receive an email?{' '}
                   <button
                     type="button"
-                    className="cs-toggle-eye-btn"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="cs-btn-link"
+                    style={{ fontWeight: '600', textDecoration: 'underline' }}
+                    onClick={handleResendLink}
+                    disabled={loading}
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {loading ? 'Sending...' : 'Resend link'}
                   </button>
                 </div>
-                {errors.password && <div className="cs-field-error-text">{errors.password}</div>}
-              </div>
 
-              {/* Confirm Password Field */}
-              <div className="cs-form-field">
-                <label className="cs-field-label" htmlFor="reg-confirm">Confirm Password</label>
-                <div className={`cs-input-box ${errors.confirm ? 'error' : ''}`}>
-                  <Lock className="cs-input-icon-left" />
-                  <input
-                    id="reg-confirm"
-                    type={showConfirm ? 'text' : 'password'}
-                    className="cs-input-control has-toggle"
-                    placeholder="Repeat password"
-                    value={form.confirm}
-                    onChange={(e) => {
-                      setForm({ ...form, confirm: e.target.value });
-                      if (errors.confirm) setErrors({ ...errors, confirm: null });
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="cs-toggle-eye-btn"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    aria-label={showConfirm ? "Hide password" : "Show password"}
-                  >
-                    {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                {errors.confirm && <div className="cs-field-error-text">{errors.confirm}</div>}
+                <button
+                  type="button"
+                  className="cs-btn-social"
+                  onClick={() => setStep('form')}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  ← Back to registration
+                </button>
               </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                className="cs-btn-submit-primary"
-                disabled={loading}
-                style={{ marginTop: '8px' }}
-              >
-                {loading ? <span className="cs-btn-spinner" /> : 'Create Account'}
-              </button>
-            </form>
+            )}
 
             {/* Or Divider */}
             <div className="cs-auth-divider" style={{ marginTop: '16px' }}>

@@ -1,0 +1,281 @@
+/* TreeFileExplorer.css — VS Code Style Directory Explorer */
+
+.vscode-tree-explorer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: var(--cs-card-bg, #ffffff);
+    color: var(--cs-text-main, #1e293b);
+    font-family: var(--font-mono, 'Fira Code', 'JetBrains Mono', Consolas, monospace);
+    font-size: 13px;
+    user-select: none;
+    border-right: 1px solid var(--cs-border, rgba(0, 0, 0, 0.1));
+    overflow: hidden;
+    position: relative;
+}
+
+/* Header & Controls */
+.vscode-tree-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--cs-border, rgba(0, 0, 0, 0.08));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--cs-bg-subtle, #f8fafc);
+}
+
+.vscode-tree-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.vscode-tree-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--cs-text-muted, #64748b);
+}
+
+.vscode-tree-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vscode-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--cs-text-muted, #64748b);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.vscode-action-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--cs-text-main, #0f172a);
+}
+
+/* Search Bar */
+.vscode-tree-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.vscode-tree-search input {
+    width: 100%;
+    padding: 6px 28px 6px 26px;
+    background: var(--cs-input-bg, #ffffff);
+    border: 1px solid var(--cs-border, #cbd5e1);
+    border-radius: 4px;
+    color: var(--cs-text-main, #0f172a);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.vscode-tree-search input:focus {
+    border-color: var(--primary-light, #2563eb);
+}
+
+.vscode-search-icon {
+    position: absolute;
+    left: 7px;
+    color: var(--cs-text-muted, #64748b);
+    pointer-events: none;
+}
+
+.vscode-search-clear {
+    position: absolute;
+    right: 6px;
+    background: transparent;
+    border: none;
+    color: var(--cs-text-muted, #64748b);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+}
+
+.vscode-search-clear:hover {
+    color: var(--cs-text-main, #0f172a);
+}
+
+/* Tree Body Container */
+.vscode-tree-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    padding: 6px 0;
+}
+
+.vscode-tree-container::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.vscode-tree-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+}
+
+/* Tree Nodes */
+.vscode-tree-row {
+    display: flex;
+    align-items: center;
+    height: 26px;
+    padding-right: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s ease;
+    position: relative;
+    color: var(--cs-text-main, #1e293b);
+}
+
+.vscode-tree-row:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.vscode-tree-row.active {
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--primary, #2563eb);
+    font-weight: 600;
+}
+
+.vscode-tree-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+    color: var(--cs-text-muted, #64748b);
+    flex-shrink: 0;
+}
+
+.vscode-node-icon {
+    margin-right: 6px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.vscode-node-name {
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vscode-file-badge {
+    font-size: 10px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--cs-text-muted, #64748b);
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Icon Colors */
+.icon-folder {
+    color: #d97706;
+}
+
+.icon-folder-open {
+    color: #ea580c;
+}
+
+.icon-code-react {
+    color: #0284c7;
+}
+
+.icon-code-ts {
+    color: #2563eb;
+}
+
+.icon-code-js {
+    color: #d97706;
+}
+
+.icon-code-java {
+    color: #f89820;
+}
+
+.icon-code-py {
+    color: #3776ab;
+}
+
+.icon-code-html {
+    color: #e34f26;
+}
+
+.icon-code-css {
+    color: #1572b6;
+}
+
+.icon-json {
+    color: #cb4b16;
+}
+
+.icon-doc {
+    color: #a6adc8;
+}
+
+.icon-image {
+    color: #a6e3a1;
+}
+
+.icon-archive {
+    color: #f38ba8;
+}
+
+/* Right-Click Context Menu */
+.vscode-context-menu {
+    position: fixed;
+    z-index: 1000;
+    background: #181825;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 4px 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    min-width: 160px;
+}
+
+.vscode-context-item {
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #cdd6f4;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.12s ease;
+}
+
+.vscode-context-item:hover {
+    background: #313244;
+    color: #ffffff;
+}
+
+.vscode-context-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 4px 0;
+}
+
+/* Empty / No Match State */
+.vscode-tree-empty {
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--cs-text-muted, #6c7086);
+    font-size: 12px;
+}

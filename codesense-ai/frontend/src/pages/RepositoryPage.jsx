@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { repositoryApi } from '../services/api';
 import ProjectSubNav from '../components/common/ProjectSubNav';
+import TreeFileExplorer from '../components/FileExplorer/TreeFileExplorer';
 
 export default function RepositoryPage() {
   const { id: projectId } = useParams();
@@ -90,153 +91,6 @@ export default function RepositoryPage() {
     }
   };
 
-  const langColor = (lang) => {
-    const map = {
-      Java: '#b07219', Python: '#3572A5', JavaScript: '#f1e05a', TypeScript: '#2b7489',
-      'C++': '#f34b7d', 'C#': '#178600', Go: '#00ADD8', Rust: '#dea584', Ruby: '#701516', XML: '#e34c26'
-    };
-    return map[lang] || '#94a3b8';
-  };
-
-  const [expandedFolders, setExpandedFolders] = useState({});
-
-  const toggleFolderExpand = (folderPath) => {
-    setExpandedFolders(prev => ({
-      ...prev,
-      [folderPath]: prev[folderPath] === false ? true : false
-    }));
-  };
-
-  // Build hierarchical folder structure supporting both / and \ delimiters
-  const buildFolderTree = (files) => {
-    const tree = {};
-    files.forEach(file => {
-      // Normalize slashes (windows backslashes vs unix forward slashes)
-      const rawPath = file.filePath || file.path || file.name || file.fileName || '';
-      const normalizedPath = rawPath.replace(/\\/g, '/');
-      const parts = normalizedPath.split('/').filter(Boolean);
-
-      let current = tree;
-      if (parts.length === 1) {
-        // File directly in root
-        if (!current._files) current._files = [];
-        current._files.push({ ...file, fileName: parts[0] });
-      } else {
-        parts.forEach((part, idx) => {
-          if (idx === parts.length - 1) {
-            if (!current._files) current._files = [];
-            current._files.push({ ...file, fileName: part });
-          } else {
-            // Case-insensitive / clean folder name
-            if (!current[part]) current[part] = {};
-            current = current[part];
-          }
-        });
-      }
-    });
-    return tree;
-  };
-
-  // Render folder tree recursively with expandable/collapsible nodes
-  const renderFolderTree = (tree, depth = 0, currentPath = '') => {
-    const items = [];
-    const folders = Object.keys(tree).filter(k => k !== '_files').sort();
-    const filesInFolder = tree._files || [];
-
-    // Render folders
-    folders.forEach(folderName => {
-      const folderPath = currentPath ? `${currentPath}/${folderName}` : folderName;
-      // Default to expanded (true) unless explicitly set to false
-      const isExpanded = expandedFolders[folderPath] !== false;
-
-      items.push(
-        <div key={`folder-${folderPath}`}>
-          <div
-            onClick={() => toggleFolderExpand(folderPath)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '12px',
-              fontWeight: '700',
-              padding: `6px 8px 6px ${depth * 14 + 8}px`,
-              color: 'var(--text-muted)',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              userSelect: 'none',
-              transition: 'background 0.15s ease',
-              marginBottom: '2px'
-            }}
-            className="folder-tree-header"
-          >
-            <span style={{ fontSize: '10px', width: '12px', color: 'var(--primary-light)' }}>
-              {isExpanded ? '▼' : '►'}
-            </span>
-            <span style={{ fontSize: '14px' }}>
-              {isExpanded ? '📂' : '📁'}
-            </span>
-            <span style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              {folderName}
-            </span>
-          </div>
-
-          {isExpanded && renderFolderTree(tree[folderName], depth + 1, folderPath)}
-        </div>
-      );
-    });
-
-    // Render files inside current folder
-    filesInFolder.forEach(f => {
-      const fullPath = f.filePath || f.path || '';
-      const computedFileName = f.fileName || (fullPath ? fullPath.split('/').pop() : 'file');
-
-      const getFileIconStr = (name) => {
-        if (!name) return '📄';
-        const lower = name.toLowerCase();
-        if (lower.endsWith('.jsx') || lower.endsWith('.tsx') || lower.endsWith('.js') || lower.endsWith('.ts')) return '⚛️';
-        if (lower.endsWith('.html') || lower.endsWith('.htm')) return '🌐';
-        if (lower.endsWith('.css') || lower.endsWith('.scss')) return '🎨';
-        if (lower.endsWith('.json') || lower.endsWith('.xml') || lower.endsWith('.yaml') || lower.endsWith('.yml')) return '⚙️';
-        if (lower.endsWith('.java') || lower.endsWith('.class') || lower.endsWith('.jar')) return '☕';
-        if (lower.endsWith('.py')) return '🐍';
-        if (lower.endsWith('.md') || lower.endsWith('.txt')) return '📝';
-        if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.svg') || lower.endsWith('.ico')) return '🖼️';
-        return '📄';
-      };
-
-      return (
-        <div
-          key={f.id || fullPath || computedFileName}
-          className="file-item"
-          onClick={() => openFile(f)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: `6px 8px 6px ${depth * 12 + 24}px`,
-            borderRadius: '4px',
-            cursor: 'pointer',
-            marginBottom: '2px',
-            background: selectedFile?.filePath === fullPath ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
-            color: selectedFile?.filePath === fullPath ? 'var(--primary-light)' : 'var(--text)',
-            fontWeight: selectedFile?.filePath === fullPath ? '600' : '400',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <span style={{ fontSize: '13px', flexShrink: 0 }}>
-            {getFileIconStr(computedFileName)}
-          </span>
-          <span style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {computedFileName}
-          </span>
-          {f.binary && <span className="badge badge-gray" style={{ fontSize: '9px', marginLeft: 'auto' }}>bin</span>}
-        </div>
-      );
-    });
-
-    return items;
-  };
-
   return (
     <div>
       <div className="page-header">
@@ -268,17 +122,15 @@ export default function RepositoryPage() {
       ) : !selectedRepo ? (
         <div className="empty-state"><h3>No repositories</h3><p>Upload or import a repository first.</p></div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '16px', minHeight: '600px' }}>
-          {/* File tree */}
-          <div className="card" style={{ padding: '12px', overflow: 'auto', maxHeight: '700px' }}>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: '600', letterSpacing: '0.5px' }}>
-              FILES ({files.length})
-            </div>
-            {files.length > 0 ? (
-              renderFolderTree(buildFolderTree(files))
-            ) : (
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px' }}>No files</div>
-            )}
+        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '16px', minHeight: '650px' }}>
+          {/* VS Code Style File Tree */}
+          <div className="card" style={{ padding: '0', overflow: 'hidden', height: '700px' }}>
+            <TreeFileExplorer
+              files={files}
+              rootName={selectedRepo.name}
+              selectedFile={selectedFile}
+              onFileSelect={openFile}
+            />
           </div>
 
           {/* File content */}

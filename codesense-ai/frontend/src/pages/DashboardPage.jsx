@@ -119,8 +119,8 @@ export default function DashboardPage() {
       // };
       // setProjects([mockProject]);
       // return mockProject.id;
-       console.error('Backend unavailable:', err);
-  throw err;
+      console.error('Backend unavailable:', err);
+      throw err;
     }
   };
 
@@ -241,16 +241,16 @@ export default function DashboardPage() {
   // ];
 
   const displayProjects = projects.map((p, idx) => ({
-  id: p.id,
-  name: p.name,
-  language: p.primaryLanguage || 'Text',
-  langColor: '#3b82f6',
-  timeAgo: 'Recently',
-  files: `${p.totalFiles || 0} files`,
-  status: p.status || 'READY',
-  avatar: p.name.substring(0, 2).toUpperCase(),
-  bg: ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][idx % 5]
-}));
+    id: p.id,
+    name: p.name,
+    language: p.primaryLanguage || 'Text',
+    langColor: '#3b82f6',
+    timeAgo: 'Recently',
+    files: `${p.totalFiles || 0} files`,
+    status: p.status || 'READY',
+    avatar: p.name.substring(0, 2).toUpperCase(),
+    bg: ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'][idx % 5]
+  }));
 
   return (
     <div className="cs-dashboard-container">
@@ -477,78 +477,72 @@ export default function DashboardPage() {
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Total Projects</span>
-                <div className="cs-stat-val">{projects.length > 0 ? projects.length : 12}</div>
+                <div className="cs-stat-val">{projects.length}</div>
               </div>
               <div className="cs-stat-icon-box cs-icon-blue">
                 <FolderGit2 style={{ width: '18px', height: '18px' }} />
               </div>
             </div>
-            <div className="cs-stat-trend text-success">+20% from last month</div>
           </div>
 
           <div className="cs-card cs-stat-box">
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Repositories</span>
-                {/* <div className="cs-stat-val">15</div> */}
+                <div className="cs-stat-val">{projects.length}</div>
               </div>
               <div className="cs-stat-icon-box cs-icon-green">
                 <FileCode style={{ width: '18px', height: '18px' }} />
               </div>
             </div>
-            <div className="cs-stat-trend text-success">+15% from last month</div>
           </div>
 
           <div className="cs-card cs-stat-box">
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Files Analyzed</span>
-                {/* <div className="cs-stat-val">24,532</div> */}
+                <div className="cs-stat-val">{projects.reduce((acc, p) => acc + (p.totalFiles || 0), 0)}</div>
               </div>
               <div className="cs-stat-icon-box cs-icon-purple">
                 <FileText style={{ width: '18px', height: '18px' }} />
               </div>
             </div>
-            <div className="cs-stat-trend text-success">+32% from last month</div>
           </div>
 
           <div className="cs-card cs-stat-box">
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Lines of Code</span>
-                {/* <div className="cs-stat-val">1.2M</div> */}
+                <div className="cs-stat-val">{projects.reduce((acc, p) => acc + ((p.totalFiles || 0) * 120), 0).toLocaleString()}</div>
               </div>
               <div className="cs-stat-icon-box cs-icon-orange">
                 <Code style={{ width: '18px', height: '18px' }} />
               </div>
             </div>
-            <div className="cs-stat-trend text-success">+25% from last month</div>
           </div>
 
           <div className="cs-card cs-stat-box">
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">Languages</span>
-                {/* <div className="cs-stat-val">8</div> */}
+                <div className="cs-stat-val">{Array.from(new Set(projects.map(p => p.primaryLanguage).filter(Boolean))).length || (projects.length > 0 ? 1 : 0)}</div>
               </div>
               <div className="cs-stat-icon-box cs-icon-pink">
                 <Tag style={{ width: '18px', height: '18px' }} />
               </div>
             </div>
-            <div className="cs-stat-trend text-success">+14% from last month</div>
           </div>
 
           <div className="cs-card cs-stat-box">
             <div className="cs-stat-top">
               <div className="cs-stat-info">
                 <span className="cs-stat-label">AI Conversations</span>
-                {/* <div className="cs-stat-val">156</div> */}
+                <div className="cs-stat-val">{projects.length > 0 ? projects.length : 0}</div>
               </div>
               <div className="cs-stat-icon-box cs-icon-purple">
                 <MessageSquare style={{ width: '18px', height: '18px' }} />
               </div>
             </div>
-            <div className="cs-stat-trend text-success">+45% from last month</div>
           </div>
         </div>
 
@@ -557,49 +551,24 @@ export default function DashboardPage() {
           <h2 className="cs-card-title" style={{ marginBottom: '20px' }}>Recent Activity</h2>
 
           <div className="cs-activity-timeline">
-            <div className="cs-activity-item">
-              <div className="cs-activity-icon cs-act-green">
-                <CheckCircle2 style={{ width: '16px', height: '16px' }} />
+            {projects.length > 0 ? (
+              projects.slice(0, 4).map((p, idx) => (
+                <div key={p.id || idx} className="cs-activity-item">
+                  <div className={`cs-activity-icon ${['cs-act-green', 'cs-act-purple', 'cs-act-blue', 'cs-act-teal'][idx % 4]}`}>
+                    {idx % 2 === 0 ? <CheckCircle2 style={{ width: '16px', height: '16px' }} /> : <FileText style={{ width: '16px', height: '16px' }} />}
+                  </div>
+                  <div className="cs-activity-info">
+                    <div className="cs-act-title">{p.status === 'READY' ? 'Repository analysis completed' : 'Repository imported'}</div>
+                    <div className="cs-act-desc">{p.name}</div>
+                    <div className="cs-act-time">Recently</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ color: 'var(--cs-text-muted)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
+                No recent activity yet. Import a repository to get started.
               </div>
-              <div className="cs-activity-info">
-                <div className="cs-act-title">Repository analysis completed</div>
-                <div className="cs-act-desc">E-Commerce Platform</div>
-                <div className="cs-act-time">2 minutes ago</div>
-              </div>
-            </div>
-
-            <div className="cs-activity-item">
-              <div className="cs-activity-icon cs-act-purple">
-                <FileText style={{ width: '16px', height: '16px' }} />
-              </div>
-              <div className="cs-activity-info">
-                <div className="cs-act-title">AI documentation generated</div>
-                <div className="cs-act-desc">User Management System API</div>
-                <div className="cs-act-time">15 minutes ago</div>
-              </div>
-            </div>
-
-            <div className="cs-activity-item">
-              <div className="cs-activity-icon cs-act-blue">
-                <Code style={{ width: '16px', height: '16px' }} />
-              </div>
-              <div className="cs-activity-info">
-                <div className="cs-act-title">Code explanation requested</div>
-                <div className="cs-act-desc">AuthService.java</div>
-                <div className="cs-act-time">1 hour ago</div>
-              </div>
-            </div>
-
-            <div className="cs-activity-item">
-              <div className="cs-activity-icon cs-act-teal">
-                <Upload style={{ width: '16px', height: '16px' }} />
-              </div>
-              <div className="cs-activity-info">
-                <div className="cs-act-title">Repository imported</div>
-                <div className="cs-act-desc">Blog API Service</div>
-                <div className="cs-act-time">3 hours ago</div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
