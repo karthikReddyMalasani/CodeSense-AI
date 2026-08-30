@@ -176,38 +176,53 @@ export default function RepositoryPage() {
     });
 
     // Render files inside current folder
-    filesInFolder.forEach(f => (
-      <div
-        key={f.id || f.filePath}
-        className="file-item"
-        onClick={() => openFile(f)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: `6px 8px 6px ${depth * 12 + 24}px`,
-          borderRadius: '4px',
-          cursor: 'pointer',
-          marginBottom: '2px',
-          background: selectedFile?.filePath === f.filePath ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
-          color: selectedFile?.filePath === f.filePath ? 'var(--primary-light)' : 'var(--text)',
-          fontWeight: selectedFile?.filePath === f.filePath ? '600' : '400',
-          transition: 'all 0.15s ease'
-        }}
-      >
-        <span style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          flexShrink: 0,
-          background: langColor(f.language)
-        }} />
-        <span style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {f.fileName || (f.filePath ? f.filePath.split('/').pop() : 'file')}
-        </span>
-        {f.binary && <span className="badge badge-gray" style={{ fontSize: '9px', marginLeft: 'auto' }}>bin</span>}
-      </div>
-    ));
+    filesInFolder.forEach(f => {
+      const fullPath = f.filePath || f.path || '';
+      const computedFileName = f.fileName || (fullPath ? fullPath.split('/').pop() : 'file');
+
+      const getFileIconStr = (name) => {
+        if (!name) return '📄';
+        const lower = name.toLowerCase();
+        if (lower.endsWith('.jsx') || lower.endsWith('.tsx') || lower.endsWith('.js') || lower.endsWith('.ts')) return '⚛️';
+        if (lower.endsWith('.html') || lower.endsWith('.htm')) return '🌐';
+        if (lower.endsWith('.css') || lower.endsWith('.scss')) return '🎨';
+        if (lower.endsWith('.json') || lower.endsWith('.xml') || lower.endsWith('.yaml') || lower.endsWith('.yml')) return '⚙️';
+        if (lower.endsWith('.java') || lower.endsWith('.class') || lower.endsWith('.jar')) return '☕';
+        if (lower.endsWith('.py')) return '🐍';
+        if (lower.endsWith('.md') || lower.endsWith('.txt')) return '📝';
+        if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.svg') || lower.endsWith('.ico')) return '🖼️';
+        return '📄';
+      };
+
+      return (
+        <div
+          key={f.id || fullPath || computedFileName}
+          className="file-item"
+          onClick={() => openFile(f)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: `6px 8px 6px ${depth * 12 + 24}px`,
+            borderRadius: '4px',
+            cursor: 'pointer',
+            marginBottom: '2px',
+            background: selectedFile?.filePath === fullPath ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
+            color: selectedFile?.filePath === fullPath ? 'var(--primary-light)' : 'var(--text)',
+            fontWeight: selectedFile?.filePath === fullPath ? '600' : '400',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <span style={{ fontSize: '13px', flexShrink: 0 }}>
+            {getFileIconStr(computedFileName)}
+          </span>
+          <span style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {computedFileName}
+          </span>
+          {f.binary && <span className="badge badge-gray" style={{ fontSize: '9px', marginLeft: 'auto' }}>bin</span>}
+        </div>
+      );
+    });
 
     return items;
   };
