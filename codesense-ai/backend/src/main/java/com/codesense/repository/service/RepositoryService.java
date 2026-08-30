@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import com.codesense.ai.vector.RepositoryChunkRepository;
 import com.codesense.ai.model.DocumentationRepository;
@@ -360,8 +362,22 @@ public class RepositoryService {
 
     private void triggerRagIngestion(Repository repo) {
         try {
-            log.info("Triggering background RAG ingestion for repository {}", repo.getId());
-            ingestionService.ingestRepositoryAsync(repo.getId());
+            UUID repositoryId = repo.getId();
+            Runnable ingestion = () -> {
+                log.info("Triggering background RAG ingestion for repository {}", repositoryId);
+                ingestionService.ingestRepositoryAsync(repositoryId);
+            };
+
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        ingestion.run();
+                    }
+                });
+            } else {
+                ingestion.run();
+            }
         } catch (Exception e) {
             log.error("Failed to trigger ingestion for repository {}: {}", repo.getId(), e.getMessage());
         }
