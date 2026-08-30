@@ -6,7 +6,7 @@ import ProjectSubNav from '../components/common/ProjectSubNav';
 
 // ── Parse mermaid output from backend into layer groups ──────────────────────
 function parseMermaidLayers(mermaid) {
-  if (!mermaid) return null;
+  if (typeof mermaid !== 'string' || !mermaid.trim()) return null;
   const layers = [];
   const subgraphRe = /subgraph\s+(\w+)([\s\S]*?)end/g;
   let match;
@@ -25,7 +25,7 @@ function parseMermaidLayers(mermaid) {
 // ── Infer layers from file list when parser has no classes ───────────────────
 function inferLayersFromFiles(files) {
   const layers = {};
-  files.forEach(f => {
+  (Array.isArray(files) ? files : []).forEach(f => {
     const p = (f.filePath || f.path || '').replace(/\\/g, '/');
     const parts = p.split('/');
     const dir = parts.length > 1 ? parts[0] : 'root';
@@ -44,6 +44,7 @@ function inferLayersFromFiles(files) {
 const LAYER_COLORS = ['#38bdf8', '#4ade80', '#a78bfa', '#f43f5e', '#fbbf24', '#fb923c'];
 
 function LayerNode({ label, components, color, isTop, isBottom }) {
+  const safeComponents = Array.isArray(components) ? components : [];
   return (
     <div style={{
       border: `2px solid ${color}`,
@@ -59,7 +60,7 @@ function LayerNode({ label, components, color, isTop, isBottom }) {
         {label}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
-        {components.slice(0, 8).map((c, i) => (
+        {safeComponents.slice(0, 8).map((c, i) => (
           <span key={i} style={{
             padding: '3px 9px',
             background: `${color}18`,
@@ -87,6 +88,9 @@ function ConnectorArrow({ label }) {
 }
 
 function ArchDiagram({ repoName, language, layers }) {
+  const safeLayers = Array.isArray(layers)
+    ? layers.filter(layer => layer && Array.isArray(layer.components))
+    : [];
   // Derive a meaningful label for each layer
   const LAYER_LABELS = {
     'Controllers': '🌐 Controller Layer',
@@ -125,14 +129,14 @@ function ArchDiagram({ repoName, language, layers }) {
       </div>
       <ConnectorArrow label="HTTP / REST" />
 
-      {layers.map((layer, idx) => (
+      {safeLayers.map((layer, idx) => (
         <React.Fragment key={idx}>
           <LayerNode
             label={getLabel(layer.name)}
             components={layer.components}
             color={LAYER_COLORS[idx % LAYER_COLORS.length]}
           />
-          {idx < layers.length - 1 && <ConnectorArrow label="" />}
+          {idx < safeLayers.length - 1 && <ConnectorArrow label="" />}
         </React.Fragment>
       ))}
 
@@ -159,7 +163,7 @@ function ArchDiagram({ repoName, language, layers }) {
 // ── Empty state for repos with no parseable structure ────────────────────────
 function SimpleFileDiagram({ files, repoName, language }) {
   const byDir = {};
-  files.forEach(f => {
+  (Array.isArray(files) ? files : []).forEach(f => {
     const p = (f.filePath || f.path || '').replace(/\\/g, '/');
     const dir = p.includes('/') ? p.split('/')[0] : '(root)';
     byDir[dir] = byDir[dir] || [];
@@ -198,7 +202,7 @@ export default function ArchitecturePage() {
 
   useEffect(() => {
     repositoryApi.list(projectId).then(res => {
-      const repos = res.data.data || [];
+      const repos = Array.isArray(res.data?.data) ? res.data.data : [];
       setRepositories(repos);
       if (repos.length > 0) {
         setSelectedRepo(repos[0]);
@@ -222,7 +226,7 @@ export default function ArchitecturePage() {
       let files = [];
       try {
         const fRes = await repoApi.getFiles(repo.id);
-        files = fRes.data?.data || [];
+        files = Array.isArray(fRes.data?.data) ? fRes.data.data : [];
       } catch { /* ok */ }
 
       if (layers && layers.length > 0) {
@@ -236,7 +240,7 @@ export default function ArchitecturePage() {
       // Parser failed entirely — use file list only
       try {
         const fRes = await repoApi.getFiles(repo.id);
-        const files = fRes.data?.data || [];
+        const files = Array.isArray(fRes.data?.data) ? fRes.data.data : [];
         const dirLayers = inferLayersFromFiles(files);
         setArchData({ layers: dirLayers.length > 0 ? dirLayers : null, files, source: 'files' });
       } catch {
