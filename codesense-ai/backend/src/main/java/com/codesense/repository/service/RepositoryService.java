@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executor;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -61,6 +62,7 @@ public class RepositoryService {
     @Qualifier("ingestionTaskExecutor")
     private Executor ingestionExecutor;
     private final PlatformTransactionManager transactionManager;
+    private final RepositoryProcessingLock processingLock;
 
     @Transactional
     public RepositoryDto uploadZip(String email, UUID projectId, MultipartFile file, UploadRepositoryRequest request) {
@@ -241,6 +243,8 @@ public class RepositoryService {
 
     @Transactional
     public void refreshGitHubRepository(UUID repositoryId) {
+        ReentrantLock lock = processingLock.forRepository(repositoryId);
+        lock.lock();
         try {
             Repository repo = repositoryRepo.findById(repositoryId).orElseThrow();
             GitHubImportRequest request = new GitHubImportRequest();
@@ -260,6 +264,8 @@ public class RepositoryService {
         } catch (Exception e) {
             log.error("Failed to refresh GitHub repository {}: {}", repositoryId, e.getMessage(), e);
             markFailed(repositoryId, e.getMessage());
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -278,7 +284,7 @@ public class RepositoryService {
             addRepositoryFile(repo, rootPath, filePath, repoFiles, languages);
         }
 
-        repositoryFileRepository.saveAll(repoFiles);
+        repositoryFileRepository.saveAllAndFlush(repoFiles);
         updateRepositoryMetadata(repo, repoFiles, languages);
         triggerRagIngestion(repo);
     }

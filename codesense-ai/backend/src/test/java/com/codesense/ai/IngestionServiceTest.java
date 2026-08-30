@@ -9,6 +9,7 @@ import com.codesense.project.model.Project;
 import com.codesense.repository.model.*;
 import com.codesense.repository.repository.*;
 import com.codesense.repository.service.LanguageDetectionService;
+import com.codesense.repository.service.RepositoryProcessingLock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,7 @@ class IngestionServiceTest {
     @Mock EmbeddingService embeddingService;
     @Mock VectorSearchService vectorSearchService;
     @Mock LanguageDetectionService languageDetectionService;
+    @Mock RepositoryProcessingLock processingLock;
 
     @InjectMocks IngestionService ingestionService;
 
@@ -44,6 +46,7 @@ class IngestionServiceTest {
     @BeforeEach
     void setUp() {
         repositoryId = UUID.randomUUID();
+        when(processingLock.forRepository(any())).thenReturn(new java.util.concurrent.locks.ReentrantLock());
 
         Project p = new Project();
         p.setId(UUID.randomUUID());

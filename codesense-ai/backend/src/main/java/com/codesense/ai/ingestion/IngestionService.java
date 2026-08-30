@@ -13,6 +13,7 @@ import com.codesense.repository.model.RepositoryFile;
 import com.codesense.repository.repository.RepositoryFileRepository;
 import com.codesense.repository.repository.RepositoryRepo;
 import com.codesense.repository.service.LanguageDetectionService;
+import com.codesense.repository.service.RepositoryProcessingLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * AI Engine — Repository Ingestion Pipeline.
@@ -52,6 +54,7 @@ public class IngestionService {
     private final EmbeddingService embeddingService;
     private final VectorSearchService vectorSearchService;
     private final LanguageDetectionService languageDetectionService;
+    private final RepositoryProcessingLock processingLock;
 
     @Value("${codesense.ai.ingestion.batch-size:50}")
     private int batchSize;
@@ -75,6 +78,16 @@ public class IngestionService {
      */
     @Transactional
     public void ingestRepository(UUID repositoryId) {
+        ReentrantLock lock = processingLock.forRepository(repositoryId);
+        lock.lock();
+        try {
+            ingestRepositoryLocked(repositoryId);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void ingestRepositoryLocked(UUID repositoryId) {
         Repository repo = repositoryRepo.findById(repositoryId)
             .orElseThrow(() -> new IngestionException("Repository not found: " + repositoryId));
 
