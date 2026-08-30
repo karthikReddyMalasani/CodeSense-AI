@@ -15,10 +15,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    const isOAuthCallback = typeof window !== 'undefined' &&
+    const isOAuthSuccessCallback = typeof window !== 'undefined' &&
       (window.location.hash.includes('access_token=') ||
         window.location.hash.includes('code=') ||
         window.location.search.includes('code='));
+
+    const isOAuthErrorCallback = typeof window !== 'undefined' &&
+      (window.location.hash.includes('error=') ||
+        window.location.search.includes('error='));
 
     const loadProfile = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -33,8 +37,9 @@ export function AuthProvider({ children }) {
         return;
       }
       if (!token) {
-        // If an OAuth hash is in the URL, keep loading true so onAuthStateChange can finish
-        if (mounted && !isOAuthCallback) setLoading(false);
+        // If an OAuth success hash is in the URL, keep loading true so onAuthStateChange can finish.
+        // If an OAuth error is present, set loading to false immediately.
+        if (mounted && (!isOAuthSuccessCallback || isOAuthErrorCallback)) setLoading(false);
         return;
       }
       try {

@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { parseAuthUrlErrors, cleanAuthUrlParams } from '../utils/authUtils';
 import '../styles/LoginPage.css';
 
 export default function LoginPage() {
   const { login, sendMagicLink, socialLogin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -14,6 +16,14 @@ export default function LoginPage() {
   const [globalError, setGlobalError] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+
+  useEffect(() => {
+    const urlError = parseAuthUrlErrors(location.search, location.hash);
+    if (urlError) {
+      setGlobalError(urlError);
+      cleanAuthUrlParams();
+    }
+  }, [location.search, location.hash]);
 
   const validateForm = () => {
     const newErrors = {};

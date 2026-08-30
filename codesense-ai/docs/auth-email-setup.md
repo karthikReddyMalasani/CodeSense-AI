@@ -12,10 +12,21 @@
 - Provides clear error messages to users
 
 **Changes Made:**
-- `AuthContext.jsx` - Enhanced login flow with manual sign-in after account creation
-- `LoginPage.jsx` - Improved error messages for better UX
+### Issue 3: "Multiple accounts with the same email address in the same linking domain detected"
 
-### Issue 2: "Error sending magic link email"
+**Root Cause:** When a user logs in with an OAuth provider (Google/GitHub) using an email address that already has an existing account in Supabase, Supabase rejects the login if automatic identity linking is not enabled.
+
+**Solution Implemented:**
+- Created `authUtils.js` to parse URL query/hash error parameters on redirect.
+- `LoginPage.jsx` automatically catches the error and displays a clear message: `"An account with this email address already exists using a different sign-in method. Please sign in using your original email & password or social login provider."`
+- Automatically cleans error query parameters (`?error=...#error=...`) from the browser address bar.
+
+**Supabase Dashboard Setting (Optional):**
+If you wish to allow automatic identity linking in Supabase:
+1. Go to Supabase Dashboard $\rightarrow$ Authentication $\rightarrow$ Providers.
+2. Under general settings / identity linking, configure manual vs. automatic identity linking behavior per project security requirements.
+
+## Supabase Email Configuration Steps
 
 **Root Cause:** Email service configuration in Supabase needs proper setup.
 
