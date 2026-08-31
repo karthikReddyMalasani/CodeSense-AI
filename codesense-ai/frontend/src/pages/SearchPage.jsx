@@ -11,6 +11,7 @@ export default function SearchPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     repositoryApi.list(projectId).then(res => {
@@ -27,16 +28,23 @@ export default function SearchPage() {
     if (selectedRepo.status !== 'READY' || selectedRepo.ingestionStatus !== 'COMPLETED') {
       setSearched(true);
       setResults([]);
+      setError('Repository indexing is still in progress.');
       return;
     }
 
-    setLoading(true); setSearched(true);
+    setLoading(true);
+    setSearched(true);
+    setError('');
     try {
       const res = await aiApi.search({ projectId, repositoryId: selectedRepo.id, query });
       const payload = res.data?.data || res.data || {};
       setResults(payload.results || []);
+      if (!payload.results || payload.results.length === 0) {
+        setError('No relevant results found for this query.');
+      }
     } catch (err) {
       setResults([]);
+      setError(err?.response?.data?.message || 'Unable to perform semantic search. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -126,8 +134,10 @@ export default function SearchPage() {
         </div>
       ) : searched && !loading ? (
         <div className="empty-state">
-          <h3>No results found</h3>
-          <p>Try a different query or ensure the repository has been ingested.</p>
+          <h3>{error ? 'Semantic search unavailable' : 'No relevant results found'}</h3>
+          <p>
+            {error || 'No relevant results found for this query. Try a more specific query or re-run repository ingestion.'}
+          </p>
         </div>
       ) : null}
     </div>

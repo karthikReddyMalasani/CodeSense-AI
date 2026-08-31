@@ -124,8 +124,7 @@ public class IngestionService {
     }
 
     private boolean shouldSkipFile(RepositoryFile file) {
-        return file == null || file.isBinary() || file.getContent() == null || file.getContent().isBlank()
-            || !languageDetectionService.isSupportedSourceLanguage(file.getLanguage());
+        return file == null || file.isBinary() || file.getContent() == null || file.getContent().isBlank();
     }
 
     private int processFileChunks(Repository repo, RepositoryFile file, List<RepositoryChunk> batch) {

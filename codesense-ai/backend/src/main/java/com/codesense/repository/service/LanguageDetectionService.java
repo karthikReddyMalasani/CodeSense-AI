@@ -65,10 +65,15 @@ public class LanguageDetectionService {
     }
 
     public boolean isSupportedSourceLanguage(String language) {
-        return language != null && switch (language) {
+        if (language == null) return false;
+
+        return switch (language) {
             case "Java", "Python", "JavaScript", "TypeScript",
                  "C", "C++", "C#", "Go", "Rust", "PHP",
-                 "Ruby", "Kotlin", "Swift" -> true;
+                 "Ruby", "Kotlin", "Swift", "Markdown",
+                 "YAML", "JSON", "XML", "HTML", "CSS",
+                 "SCSS", "SASS", "SQL", "Text", "Gradle",
+                 "Terraform", "Protobuf", "Shell" -> true;
             default -> false;
         };
     }
