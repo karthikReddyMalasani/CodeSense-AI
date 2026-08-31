@@ -7,36 +7,36 @@ const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const TYPES = ['BUG', 'SECURITY', 'CODE_SMELL', 'PERFORMANCE', 'MAINTAINABILITY'];
 
 const TYPE_META = {
-    BUG: { label: 'Bug', color: '#ef4444', bg: '#fef2f2', icon: '🐛' },
-    SECURITY: { label: 'Security', color: '#f97316', bg: '#fff7ed', icon: '🔒' },
-    CODE_SMELL: { label: 'Code Smell', color: '#eab308', bg: '#fefce8', icon: '⚠️' },
-    PERFORMANCE: { label: 'Performance', color: '#3b82f6', bg: '#eff6ff', icon: '⚡' },
-    MAINTAINABILITY: { label: 'Maintain.', color: '#8b5cf6', bg: '#f5f3ff', icon: '🔧' },
+    BUG: { label: 'Bug', color: 'var(--destructive)', bg: 'var(--destructive-surface)', icon: '🐛' },
+    SECURITY: { label: 'Security', color: 'var(--warning)', bg: 'var(--warning-surface)', icon: '🔒' },
+    CODE_SMELL: { label: 'Code Smell', color: 'var(--warning)', bg: 'var(--warning-surface)', icon: '⚠️' },
+    PERFORMANCE: { label: 'Performance', color: 'var(--primary)', bg: 'var(--accent)', icon: '⚡' },
+    MAINTAINABILITY: { label: 'Maintain.', color: 'var(--info)', bg: 'var(--info-surface)', icon: '🔧' },
 };
 
 const SEV_META = {
-    CRITICAL: { color: '#ef4444', text: 'Critical' },
-    HIGH: { color: '#f97316', text: 'High' },
-    MEDIUM: { color: '#eab308', text: 'Medium' },
-    LOW: { color: '#22c55e', text: 'Low' },
+    CRITICAL: { color: 'var(--destructive)', text: 'Critical' },
+    HIGH: { color: 'var(--warning)', text: 'High' },
+    MEDIUM: { color: 'var(--warning)', text: 'Medium' },
+    LOW: { color: 'var(--success)', text: 'Low' },
 };
 
 function GradeRing({ score, grade }) {
-    const color = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+    const color = score >= 80 ? 'var(--success)' : score >= 60 ? 'var(--warning)' : 'var(--destructive)';
     const r = 48, circ = 2 * Math.PI * r;
     const dash = (score / 100) * circ;
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
             <svg width="128" height="128" viewBox="0 0 128 128">
-                <circle cx="64" cy="64" r={r} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                <circle cx="64" cy="64" r={r} fill="none" stroke="var(--border)" strokeWidth="10" />
                 <circle cx="64" cy="64" r={r} fill="none" stroke={color} strokeWidth="10"
                     strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
                     transform="rotate(-90 64 64)" style={{ transition: 'stroke-dasharray 1s ease' }} />
                 <text x="64" y="58" textAnchor="middle" fontSize="26" fontWeight="800" fill={color}>{score}</text>
-                <text x="64" y="76" textAnchor="middle" fontSize="11" fill="var(--muted-foreground, #64748b)">/100</text>
+                <text x="64" y="76" textAnchor="middle" fontSize="11" fill="var(--muted-foreground)">/100</text>
             </svg>
             <div style={{
-                background: color, color: 'var(--primary-foreground, #ffffff)', borderRadius: '8px',
+                background: color, color: 'var(--primary-foreground)', borderRadius: '8px',
                 padding: '4px 20px', fontSize: '20px', fontWeight: '800', letterSpacing: '2px'
             }}>{grade}</div>
         </div>
@@ -49,7 +49,7 @@ function SeverityBar({ count, severity, max }) {
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
             <span style={{ width: '70px', fontSize: '12px', color: meta.color, fontWeight: '600' }}>{meta.text}</span>
-            <div style={{ flex: 1, background: '#f1f5f9', borderRadius: '99px', height: '10px', overflow: 'hidden' }}>
+            <div style={{ flex: 1, background: 'var(--muted)', borderRadius: '99px', height: '10px', overflow: 'hidden' }}>
                 <div style={{
                     width: `${pct}%`, background: meta.color, height: '100%', borderRadius: '99px',
                     transition: 'width 1s ease'
@@ -182,12 +182,12 @@ export default function QualityDashboardPage() {
                                     { label: 'Code Smells', count: report.codeSmellCount, meta: TYPE_META.CODE_SMELL },
                                     { label: 'Performance', count: report.performanceCount, meta: TYPE_META.PERFORMANCE },
                                     { label: 'Maintainability', count: (report.issues || []).filter(i => i.type === 'MAINTAINABILITY').length, meta: TYPE_META.MAINTAINABILITY },
-                                    { label: 'Total Issues', count: (report.issues || []).length, meta: { color: 'var(--muted-foreground, #475569)', bg: 'var(--muted, #f8fafc)', icon: '📋' } },
+                                    { label: 'Total Issues', count: (report.issues || []).length, meta: { color: 'var(--muted-foreground)', bg: 'var(--muted)', icon: '📋' } },
                                 ].map(({ label, count, meta }) => (
                                     <div key={label} style={{ background: meta.bg, borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
                                         <div style={{ fontSize: '22px', marginBottom: '2px' }}>{meta.icon}</div>
                                         <div style={{ fontSize: '24px', fontWeight: '800', color: meta.color }}>{count}</div>
-                                        <div style={{ fontSize: '11px', color: 'var(--muted-foreground, #64748b)' }}>{label}</div>
+                                        <div style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>{label}</div>
                                     </div>
                                 ))}
                             </div>
@@ -261,7 +261,7 @@ export default function QualityDashboardPage() {
                                     const isExpanded = expandedIssue === i;
                                     return (
                                         <div key={i} style={{
-                                            border: `1px solid ${tm.color}33`, borderRadius: '10px',
+                                            border: `1px solid ${tm.color}`, borderRadius: '10px',
                                             overflow: 'hidden', background: tm.bg
                                         }}>
                                             <div style={{
@@ -279,7 +279,7 @@ export default function QualityDashboardPage() {
                                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                                     <span style={{
                                                         padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '700',
-                                                        background: sm.color + '22', color: sm.color, border: `1px solid ${sm.color}44`
+                                                        background: 'var(--muted)', color: sm.color, border: `1px solid ${sm.color}`
                                                     }}>{sm.text}</span>
                                                     <span style={{ fontSize: '11px', color: 'var(--muted-foreground, #64748b)' }}>{isExpanded ? '▲' : '▼'}</span>
                                                 </div>
@@ -287,7 +287,7 @@ export default function QualityDashboardPage() {
 
                                             {isExpanded && (
                                                 <div style={{
-                                                    padding: '0 14px 14px', borderTop: `1px solid ${tm.color}33`,
+                                                    padding: '0 14px 14px', borderTop: `1px solid ${tm.color}`,
                                                     display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '2px', paddingTop: '12px'
                                                 }}>
                                                     {issue.description && (

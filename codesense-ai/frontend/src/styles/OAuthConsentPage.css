@@ -3,16 +3,16 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: #0b1220;
-  color: #e5edf7;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .oauth-consent-card {
   width: min(100%, 460px);
   padding: 40px;
-  border: 1px solid #26364d;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #111c2d;
+  background: var(--card);
   box-shadow: 0 24px 70px rgba(0, 0, 0, .3);
 }
 
@@ -23,13 +23,13 @@
   place-items: center;
   margin-bottom: 24px;
   border-radius: 50%;
-  color: #70e1c1;
-  background: #143c3c;
+  color: var(--success);
+  background: var(--success-surface);
 }
 
 .oauth-consent-eyebrow {
   margin: 0 0 10px;
-  color: #70e1c1;
+  color: var(--success);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .08em;
@@ -38,14 +38,14 @@
 
 .oauth-consent-card h1 {
   margin: 0;
-  color: #f7fbff;
+  color: var(--card-foreground);
   font-size: 28px;
   line-height: 1.2;
 }
 
 .oauth-consent-copy {
   margin: 14px 0 24px;
-  color: #aab8ca;
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 
@@ -53,19 +53,19 @@
   display: grid;
   gap: 5px;
   padding: 14px 16px;
-  border-left: 3px solid #70e1c1;
-  background: #17263a;
+  border-left: 3px solid var(--success);
+  background: var(--muted);
 }
 
 .oauth-consent-account span,
 .oauth-consent-note {
-  color: #8fa1b7;
+  color: var(--muted-foreground);
   font-size: 13px;
 }
 
 .oauth-consent-account strong {
   overflow-wrap: anywhere;
-  color: #f7fbff;
+  color: var(--card-foreground);
 }
 
 .oauth-consent-scopes {
@@ -73,7 +73,7 @@
   gap: 10px;
   margin: 24px 0;
   padding-left: 20px;
-  color: #d5e0ec;
+  color: var(--foreground);
   text-transform: capitalize;
 }
 
@@ -92,13 +92,13 @@
 }
 
 .oauth-consent-deny {
-  color: #d5e0ec;
-  background: #26364d;
+  color: var(--secondary-foreground);
+  background: var(--secondary);
 }
 
 .oauth-consent-allow {
-  color: #07151b;
-  background: #70e1c1;
+  color: var(--success-foreground);
+  background: var(--success);
 }
 
 .oauth-consent-allow:disabled {

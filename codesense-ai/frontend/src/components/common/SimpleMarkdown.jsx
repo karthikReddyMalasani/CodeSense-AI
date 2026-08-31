@@ -21,8 +21,8 @@ export default function SimpleMarkdown({ children }) {
         i++;
       }
       elements.push(
-        <pre key={i} style={{ background: 'var(--bg-soft, #111827)', border: '1px solid var(--border, #334155)', borderRadius: '6px', padding: '12px', overflowX: 'auto', margin: '8px 0' }}>
-          <code style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '12px', color: 'var(--text, #e5edf7)' }}>
+        <pre key={i} style={{ background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px', overflowX: 'auto', margin: '8px 0' }}>
+          <code style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text)' }}>
             {codeLines.join('\n')}
           </code>
         </pre>
@@ -52,11 +52,11 @@ export default function SimpleMarkdown({ children }) {
 
       elements.push(
         <div key={`table-${i}`} style={{ width: '100%', overflowX: 'auto', margin: '12px 0' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border, #334155)', borderRadius: '6px', background: 'var(--bg-card, #101827)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg-card)' }}>
             <thead>
-              <tr style={{ background: 'rgba(99, 102, 241, 0.08)', borderBottom: '2px solid var(--border, #334155)' }}>
+              <tr style={{ background: 'var(--accent)', borderBottom: '2px solid var(--border)' }}>
                 {headerLine.map((header, idx) => (
-                  <th key={idx} style={{ padding: '10px 12px', textAlign: getAlign(alignLine[idx]), fontWeight: '600', color: 'var(--text, #e5edf7)', borderRight: idx < headerLine.length - 1 ? '1px solid var(--border, #334155)' : 'none' }}>
+                  <th key={idx} style={{ padding: '10px 12px', textAlign: getAlign(alignLine[idx]), fontWeight: '600', color: 'var(--accent-foreground)', borderRight: idx < headerLine.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     {renderInline(header)}
                   </th>
                 ))}
@@ -64,9 +64,9 @@ export default function SimpleMarkdown({ children }) {
             </thead>
             <tbody>
               {rows.map((row, rowIdx) => (
-                <tr key={rowIdx} style={{ borderBottom: '1px solid var(--border, #334155)' }}>
+                <tr key={rowIdx} style={{ borderBottom: '1px solid var(--border)' }}>
                   {row.map((cell, cellIdx) => (
-                    <td key={cellIdx} style={{ padding: '10px 12px', textAlign: getAlign(alignLine[cellIdx]), color: 'var(--text, #e5edf7)', borderRight: cellIdx < row.length - 1 ? '1px solid var(--border, #334155)' : 'none', verticalAlign: 'top' }}>
+                    <td key={cellIdx} style={{ padding: '10px 12px', textAlign: getAlign(alignLine[cellIdx]), color: 'var(--card-foreground)', borderRight: cellIdx < row.length - 1 ? '1px solid var(--border)' : 'none', verticalAlign: 'top' }}>
                       {renderInline(cell)}
                     </td>
                   ))}
@@ -80,26 +80,26 @@ export default function SimpleMarkdown({ children }) {
     }
 
     if (line.startsWith('### ')) {
-      elements.push(<h3 key={i} style={{ fontSize: '16px', fontWeight: '600', margin: '16px 0 8px', color: 'var(--text, #e5edf7)' }}>{renderInline(line.slice(4))}</h3>);
+      elements.push(<h3 key={i} style={{ fontSize: '16px', fontWeight: '600', margin: '16px 0 8px', color: 'var(--foreground)' }}>{renderInline(line.slice(4))}</h3>);
       i++; continue;
     }
     if (line.startsWith('## ')) {
-      elements.push(<h2 key={i} style={{ fontSize: '18px', fontWeight: '700', margin: '20px 0 10px', color: 'var(--text, #e5edf7)', borderBottom: '1px solid var(--border, #334155)', paddingBottom: '6px' }}>{renderInline(line.slice(3))}</h2>);
+      elements.push(<h2 key={i} style={{ fontSize: '18px', fontWeight: '700', margin: '20px 0 10px', color: 'var(--foreground)', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>{renderInline(line.slice(3))}</h2>);
       i++; continue;
     }
     if (line.startsWith('# ')) {
-      elements.push(<h1 key={i} style={{ fontSize: '22px', fontWeight: '700', margin: '20px 0 12px', color: 'var(--text, #e5edf7)' }}>{renderInline(line.slice(2))}</h1>);
+      elements.push(<h1 key={i} style={{ fontSize: '22px', fontWeight: '700', margin: '20px 0 12px', color: 'var(--foreground)' }}>{renderInline(line.slice(2))}</h1>);
       i++; continue;
     }
 
     if (line.match(/^[-*_]{3,}$/)) {
-      elements.push(<hr key={i} style={{ border: 'none', borderTop: '1px solid var(--border, #334155)', margin: '16px 0' }} />);
+      elements.push(<hr key={i} style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />);
       i++; continue;
     }
 
     if (line.startsWith('> ')) {
       elements.push(
-        <blockquote key={i} style={{ borderLeft: '3px solid var(--accent-color, #6366f1)', paddingLeft: '12px', margin: '8px 0', color: 'var(--text-muted, #9aa4b2)', fontStyle: 'italic' }}>
+        <blockquote key={i} style={{ borderLeft: '3px solid var(--accent-color)', paddingLeft: '12px', margin: '8px 0', color: 'var(--text-muted)', fontStyle: 'italic' }}>
           {renderInline(line.slice(2))}
         </blockquote>
       );
@@ -109,10 +109,10 @@ export default function SimpleMarkdown({ children }) {
     if (line.match(/^[*\-+] /)) {
       const items = [];
       while (i < lines.length && lines[i].match(/^[*\-+] /)) {
-        items.push(<li key={i} style={{ margin: '3px 0', color: 'var(--text, #e5edf7)' }}>{renderInline(lines[i].slice(2))}</li>);
+        items.push(<li key={i} style={{ margin: '3px 0', color: 'var(--foreground)' }}>{renderInline(lines[i].slice(2))}</li>);
         i++;
       }
-      elements.push(<ul key={`ul-${i}`} style={{ paddingLeft: '20px', margin: '8px 0', color: 'var(--text, #e5edf7)' }}>{items}</ul>);
+      elements.push(<ul key={`ul-${i}`} style={{ paddingLeft: '20px', margin: '8px 0', color: 'var(--foreground)' }}>{items}</ul>);
       continue;
     }
 
@@ -120,10 +120,10 @@ export default function SimpleMarkdown({ children }) {
       const items = [];
       while (i < lines.length && lines[i].match(/^\d+\. /)) {
         const content = lines[i].replace(/^\d+\. /, '');
-        items.push(<li key={i} style={{ margin: '3px 0', color: 'var(--text, #e5edf7)' }}>{renderInline(content)}</li>);
+        items.push(<li key={i} style={{ margin: '3px 0', color: 'var(--foreground)' }}>{renderInline(content)}</li>);
         i++;
       }
-      elements.push(<ol key={`ol-${i}`} style={{ paddingLeft: '20px', margin: '8px 0', color: 'var(--text, #e5edf7)' }}>{items}</ol>);
+      elements.push(<ol key={`ol-${i}`} style={{ paddingLeft: '20px', margin: '8px 0', color: 'var(--foreground)' }}>{items}</ol>);
       continue;
     }
 
@@ -132,7 +132,7 @@ export default function SimpleMarkdown({ children }) {
       i++; continue;
     }
 
-    elements.push(<p key={i} style={{ margin: '6px 0', lineHeight: '1.65', color: 'var(--text, #e5edf7)' }}>{renderInline(line)}</p>);
+    elements.push(<p key={i} style={{ margin: '6px 0', lineHeight: '1.65', color: 'var(--foreground)' }}>{renderInline(line)}</p>);
     i++;
   }
 
@@ -150,7 +150,7 @@ function renderInline(text) {
     if (match.index > last) parts.push(<span key={keyIdx++}>{text.slice(last, match.index)}</span>);
     const m = match[0];
     if (m.startsWith('`')) {
-      parts.push(<code key={keyIdx++} style={{ background: 'rgba(148, 163, 184, 0.12)', padding: '1px 5px', borderRadius: '4px', fontFamily: 'var(--font-mono, monospace)', fontSize: '12px', color: 'var(--text, #e5edf7)' }}>{m.slice(1, -1)}</code>);
+      parts.push(<code key={keyIdx++} style={{ background: 'var(--secondary)', padding: '1px 5px', borderRadius: '4px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--secondary-foreground)' }}>{m.slice(1, -1)}</code>);
     } else if (m.startsWith('**') || m.startsWith('__')) {
       parts.push(<strong key={keyIdx++}>{m.slice(2, -2)}</strong>);
     } else {

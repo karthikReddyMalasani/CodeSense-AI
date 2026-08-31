@@ -2,15 +2,21 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const ThemeContext = createContext();
 
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.body.setAttribute('data-theme', theme);
+}
+
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('codeassist_theme') || 'dark';
+    const storedTheme = localStorage.getItem('codeassist_theme') || 'dark';
+    applyTheme(storedTheme);
+    return storedTheme;
   });
 
   useEffect(() => {
     localStorage.setItem('codeassist_theme', theme);
-    document.documentElement.setAttribute('data-theme', theme);
-    document.body.setAttribute('data-theme', theme);
+    applyTheme(theme);
   }, [theme]);
 
   const toggleTheme = () => {

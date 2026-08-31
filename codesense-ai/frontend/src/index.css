@@ -38,14 +38,26 @@
   --warning-foreground: #ffffff;
   --info: #0f766e;
   --info-foreground: #ffffff;
+  --success-surface: #ecfdf3;
+  --warning-surface: #fffbeb;
+  --destructive-surface: #fef2f2;
+  --info-surface: #ecfeff;
+  --disabled-foreground: #64748b;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #60a5fa;
+  --sidebar-primary-foreground: #08131f;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #334155;
 
   --cs-bg-main: var(--background);
   --cs-bg-card: var(--card);
   --cs-card-bg: var(--card);
   --cs-bg-subtle: var(--muted);
-  --cs-sidebar-bg: #0b0f19;
-  --cs-sidebar-hover: #1e293b;
-  --cs-sidebar-text: #cbd5e1;
+  --cs-sidebar-bg: var(--sidebar);
+  --cs-sidebar-hover: var(--sidebar-accent);
+  --cs-sidebar-text: var(--sidebar-foreground);
   --cs-sidebar-header: #94a3b8;
   --cs-sidebar-border: #1e293b;
 
@@ -118,14 +130,26 @@ body[data-theme='dark'],
   --warning-foreground: #1f2937;
   --info: #38bdf8;
   --info-foreground: #082f49;
+  --success-surface: #123524;
+  --warning-surface: #3a2b08;
+  --destructive-surface: #3b171b;
+  --info-surface: #0b2d3a;
+  --disabled-foreground: #94a3b8;
+  --sidebar: #08111d;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #60a5fa;
+  --sidebar-primary-foreground: #08131f;
+  --sidebar-accent: #172233;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #25364d;
 
   --cs-bg-main: var(--background);
   --cs-bg-card: var(--card);
   --cs-card-bg: var(--card);
   --cs-bg-subtle: var(--muted);
-  --cs-sidebar-bg: #08111d;
-  --cs-sidebar-hover: #172233;
-  --cs-sidebar-text: #dfeaf7;
+  --cs-sidebar-bg: var(--sidebar);
+  --cs-sidebar-hover: var(--sidebar-accent);
+  --cs-sidebar-text: var(--sidebar-foreground);
   --cs-sidebar-header: #b7c4d4;
   --cs-sidebar-border: #25364d;
 
@@ -244,10 +268,6 @@ a,
 }
 
 /* Ensure nested content remains readable against their surfaces */
-.card *, .panel *, .alert *, .markdown * {
-  color: inherit;
-}
-
 pre, code {
   font-family: var(--font-mono);
 }
@@ -320,21 +340,27 @@ option {
 }
 
 .alert-error {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.35);
-  color: var(--foreground);
+  background: var(--destructive-surface);
+  border-color: var(--destructive);
+  color: var(--destructive);
 }
 
 .alert-success {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.35);
-  color: var(--foreground);
+  background: var(--success-surface);
+  border-color: var(--success);
+  color: var(--success);
 }
 
 .alert-warning {
-  background: rgba(245, 158, 11, 0.09);
-  border-color: rgba(245, 158, 11, 0.4);
-  color: var(--foreground);
+  background: var(--warning-surface);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.alert-info {
+  background: var(--info-surface);
+  border-color: var(--info);
+  color: var(--info);
 }
 
 .warning-text, .error-text, .success-text, .info-text {
@@ -1613,13 +1639,15 @@ body {
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  color: var(--disabled-foreground);
+  background: var(--muted);
+  border-color: var(--border);
   cursor: not-allowed;
 }
 
 .btn-primary {
   background: var(--cs-primary-gradient);
-  color: #ffffff;
+  color: var(--primary-foreground);
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
 }
 
@@ -1646,13 +1674,14 @@ body {
 }
 
 .btn-danger {
-  background: #fee2e2;
-  color: #b91c1c;
-  border-color: #fecaca;
+  background: var(--destructive-surface);
+  color: var(--destructive);
+  border-color: var(--destructive);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #fecaca;
+  background: var(--destructive);
+  color: var(--destructive-foreground);
 }
 
 /* Badges */
@@ -1666,33 +1695,33 @@ body {
 }
 
 .badge-blue {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .badge-green {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--success-surface);
+  color: var(--success);
 }
 
 .badge-yellow {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--warning-surface);
+  color: var(--warning);
 }
 
 .badge-red {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--destructive-surface);
+  color: var(--destructive);
 }
 
 .badge-gray {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--muted);
+  color: var(--muted-foreground);
 }
 
 .badge-purple {
-  background: #f3e8ff;
-  color: #7c3aed;
+  background: var(--accent);
+  color: var(--primary);
 }
 
 /* Status pills */
@@ -1716,9 +1745,9 @@ body {
 }
 
 .alert-info {
-  background: #e0e7ff;
-  color: #3730a3;
-  border: 1px solid #c7d2fe;
+  background: var(--info-surface);
+  color: var(--info);
+  border: 1px solid var(--info);
 }
 
 .alert-info::before {
@@ -1726,9 +1755,9 @@ body {
 }
 
 .alert-error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  background: var(--destructive-surface);
+  color: var(--destructive);
+  border: 1px solid var(--destructive);
 }
 
 .alert-error::before {
@@ -1736,9 +1765,9 @@ body {
 }
 
 .alert-success {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--success-surface);
+  color: var(--success);
+  border: 1px solid var(--success);
 }
 
 .alert-success::before {
@@ -1746,9 +1775,9 @@ body {
 }
 
 .alert-warning {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background: var(--warning-surface);
+  color: var(--warning);
+  border: 1px solid var(--warning);
 }
 
 .alert-warning::before {
@@ -2349,8 +2378,8 @@ pre {
 }
 
 .markdown th {
-  background: rgba(99, 102, 241, 0.08);
-  color: var(--cs-text-main);
+  background: var(--accent);
+  color: var(--accent-foreground);
   font-weight: 700;
   padding: 12px 14px;
   border-bottom: 2px solid var(--cs-border-color);
@@ -2368,7 +2397,7 @@ pre {
 }
 
 .markdown tr:nth-child(even) td {
-  background: rgba(59, 130, 246, 0.02);
+  background: var(--muted);
 }
 
 .markdown a {
@@ -2773,3 +2802,34 @@ pre {
 @media (max-width: 650px) { .dependency-header { align-items: stretch; } .dependency-controls { flex-wrap: wrap; } .dependency-controls .input { flex: 1; } .dependency-stage-list { grid-template-columns: 1fr; } .dependency-summary { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 1000px) { .metrics-card-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 700px) { .metrics-header, .metrics-hero { flex-direction: column; gap: 16px; align-items: stretch; } .metrics-actions { flex-wrap: wrap; } .metrics-actions .input { flex: 1; min-width: 180px; } .metrics-main-grid { grid-template-columns: 1fr; } .metrics-card-grid { grid-template-columns: repeat(2, 1fr); } .observation-list { grid-template-columns: 1fr; } }
+
+/* Semantic state overrides for legacy feature classes. */
+.cs-alert-danger,
+.alert-error,
+.failed-progress,
+.dependency-failed { color: var(--destructive); }
+.cs-alert-danger,
+.alert-error { background: var(--destructive-surface); border-color: var(--destructive); }
+.cs-alert-success,
+.alert-success,
+.quality-callout.success { background: var(--success-surface); color: var(--success); border-color: var(--success); }
+.metrics-status,
+.stage-item.done,
+.dependency-stage.done { background: var(--success-surface); color: var(--success); }
+.good { color: var(--success); }
+.warning { color: var(--warning); }
+.danger { color: var(--destructive); }
+.observation { background: var(--warning-surface); color: var(--warning); border-color: var(--warning); }
+.confidence-neutral { background: var(--muted); color: var(--muted-foreground); }
+.confidence-variant,
+.status-badge { background: var(--accent); color: var(--accent-foreground); }
+.mermaid-pre,
+.dependency-mermaid pre { background: var(--muted); color: var(--foreground); border: 1px solid var(--border); }
+.dependency-filters button.active { color: var(--primary-foreground); }
+.dependency-node.external { border-left-color: var(--warning); }
+.dependency-node > span { background: var(--accent); color: var(--accent-foreground); }
+.dependency-node.external > span { background: var(--warning-surface); color: var(--warning); }
+.stage-item.done .stage-icon,
+.dependency-stage.done > span { background: var(--success-surface); }
+.stage-item.active .stage-icon,
+.dependency-stage.active > span { background: var(--accent); }
