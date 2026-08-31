@@ -47,7 +47,7 @@ export default function ProjectSubNav({ activeTab }) {
                     <button
                         key={tab.key}
                         className={btnClass}
-                        style={isActive ? { backgroundColor: 'var(--accent-color, #3b82f6)', color: '#fff' } : {}}
+                        style={isActive ? { backgroundColor: 'var(--accent-color, #3b82f6)', color: 'var(--primary-foreground, #ffffff)' } : {}}
                         onClick={() => navigate(tab.path)}
                     >
                         {tab.label}

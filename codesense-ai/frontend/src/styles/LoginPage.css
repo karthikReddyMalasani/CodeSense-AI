@@ -9,7 +9,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #ebf0f7;
+    background: var(--background, #ebf0f7);
     padding: 20px;
     box-sizing: border-box;
     overflow-y: auto;
@@ -20,7 +20,8 @@
     width: 100%;
     max-width: 1080px;
     max-height: calc(100vh - 40px);
-    background: #ffffff;
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
     border-radius: 24px;
     box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.12), 0 10px 20px -10px rgba(15, 23, 42, 0.05);
     display: flex;
@@ -281,7 +282,7 @@
 /* ─── RIGHT FORM PANEL ───────────────────────────────────────────────────── */
 .cs-login-form-panel {
     flex: 1;
-    background-color: #f8fafc;
+    background-color: var(--muted, #f8fafc);
     padding: 24px 24px;
     display: flex;
     align-items: center;
@@ -293,11 +294,11 @@
 .cs-login-form-card {
     width: 100%;
     max-width: 440px;
-    background: #ffffff;
+    background: var(--card, #ffffff);
     border-radius: 20px;
     padding: 28px 28px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
-    border: 1px solid #f1f5f9;
+    border: 1px solid var(--border, #f1f5f9);
 }
 
 .cs-form-header {
@@ -308,14 +309,14 @@
 .cs-form-title {
     font-size: 28px;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--foreground, #0f172a);
     letter-spacing: -0.5px;
     margin-bottom: 6px;
 }
 
 .cs-form-subtitle {
     font-size: 14px;
-    color: #64748b;
+    color: var(--muted-foreground, #64748b);
     font-weight: 400;
 }
 
@@ -335,7 +336,7 @@
 .cs-field-label {
     font-size: 13px;
     font-weight: 600;
-    color: #334155;
+    color: var(--foreground, #334155);
 }
 
 .cs-input-box {
@@ -358,11 +359,11 @@
     width: 100%;
     height: 46px;
     padding: 0 14px 0 42px;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
+    background: var(--input, #ffffff);
+    border: 1px solid var(--border, #cbd5e1);
     border-radius: 10px;
     font-size: 14px;
-    color: #0f172a;
+    color: var(--foreground, #0f172a);
     font-family: inherit;
     outline: none;
     transition: all 0.2s ease;
@@ -532,8 +533,8 @@
 .cs-btn-social {
     width: 100%;
     height: 44px;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #cbd5e1);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -541,14 +542,14 @@
     gap: 10px;
     font-size: 14px;
     font-weight: 600;
-    color: #334155;
+    color: var(--foreground, #334155);
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .cs-btn-social:hover {
-    background: #f8fafc;
-    border-color: #94a3b8;
+    background: var(--muted, #f8fafc);
+    border-color: var(--border, #94a3b8);
 }
 
 .cs-social-icon {
@@ -562,11 +563,11 @@
     text-align: center;
     margin-top: 24px;
     font-size: 13.5px;
-    color: #64748b;
+    color: var(--muted-foreground, #64748b);
 }
 
 .cs-auth-footer-text a {
-    color: #2563eb;
+    color: var(--primary, #2563eb);
     font-weight: 600;
     text-decoration: none;
 }

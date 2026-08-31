@@ -3,17 +3,17 @@
 */
 
 :root {
-  --bg: #0b0f13;
-  --bg-card: #101827;
-  --bg-soft: #111827;
-  --text: #e5edf7;
-  --text-muted: #9aa4b2;
-  --border: rgba(148, 163, 184, 0.2);
-  --table-border: rgba(148, 163, 184, 0.25);
-  --accent-color: #6366f1;
-  --accent-color-strong: #4f46e5;
-  --input-bg: #0f172a;
-  --button-secondary-bg: #111827;
+  --bg: var(--background);
+  --bg-card: var(--card);
+  --bg-soft: var(--muted);
+  --text: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --border: var(--border);
+  --table-border: var(--border);
+  --accent-color: var(--primary);
+  --accent-color-strong: var(--primary);
+  --input-bg: var(--input);
+  --button-secondary-bg: var(--card);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Source Code Pro", monospace;
   --radius: 8px;
 }
@@ -21,17 +21,17 @@
 body[data-theme='light'],
 :root[data-theme='light'],
 body.theme-light {
-  --bg: #f8fafc;
-  --bg-card: #ffffff;
-  --bg-soft: #f1f5f9;
-  --text: #0f172a;
-  --text-muted: #475569;
-  --border: rgba(15, 23, 42, 0.12);
-  --table-border: rgba(15, 23, 42, 0.18);
-  --accent-color: #2563eb;
-  --accent-color-strong: #1d4ed8;
-  --input-bg: #ffffff;
-  --button-secondary-bg: #f8fafc;
+  --bg: var(--background);
+  --bg-card: var(--card);
+  --bg-soft: var(--muted);
+  --text: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --border: var(--border);
+  --table-border: var(--border);
+  --accent-color: var(--primary);
+  --accent-color-strong: var(--primary);
+  --input-bg: var(--input);
+  --button-secondary-bg: var(--card);
 }
 
 html, body, #root {
@@ -47,7 +47,7 @@ body {
 
 * { box-sizing: border-box; }
 
-a { color: var(--accent-color); text-decoration: none; }
+a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 button,
@@ -119,13 +119,13 @@ code {
 }
 
 .badge, .badge-blue, .badge-gray {
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--muted);
   color: var(--text);
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 12px;
 }
-.badge-blue { background: rgba(59,130,246,0.12); }
+.badge-blue { background: rgba(59,130,246,0.14); }
 .badge-gray { background: rgba(148,163,184,0.14); }
 
 .btn {
@@ -139,7 +139,7 @@ code {
 .btn-primary {
   background: var(--accent-color);
   border-color: var(--accent-color);
-  color: #ffffff;
+  color: var(--primary-foreground, #ffffff);
 }
 .btn-secondary {
   background: var(--button-secondary-bg);

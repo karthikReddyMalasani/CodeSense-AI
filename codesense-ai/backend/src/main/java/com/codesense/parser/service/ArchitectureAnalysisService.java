@@ -137,7 +137,8 @@ public class ArchitectureAnalysisService {
         }
 
         String mermaid = buildMermaid(flows);
-        return new Result("Evidence-backed layered application architecture", "The report is derived from " + parsed.getFiles().size() + " parsed files and " + parsed.getTotalRelationships() + " parser relationships. Confirmed findings use parser metadata; path-based areas are marked inferred.", components, flows, apis, technologies.keySet().stream().toList(), evidence.stream().limit(60).toList(), mermaid);
+        String summary = "This layered modular architecture is derived from " + parsed.getFiles().size() + " parsed files and " + parsed.getTotalRelationships() + " parser relationships. Confirmed findings use parser metadata; path-based areas are marked inferred.";
+        return new Result("Evidence-backed layered application architecture", summary, components, flows, apis, technologies.keySet().stream().toList(), evidence.stream().limit(60).toList(), mermaid);
     }
 
     private List<Flow> detectRelationshipFlows(ParsedRepositoryDTO parsed, Map<String, LinkedHashSet<String>> layers) {
@@ -147,17 +148,24 @@ public class ArchitectureAnalysisService {
             if (file == null || file.getRelationships() == null) continue;
             for (var relationship : file.getRelationships()) {
                 if (relationship == null) continue;
-                String source = cleanRelationshipName(relationship.getSourceElement());
-                String target = cleanRelationshipName(relationship.getTargetElement());
+
+                String source = normalizeRelationshipNode(relationship.getSourceElement(), relationship.getSourceFile());
+                String target = normalizeRelationshipNode(relationship.getTargetElement(), relationship.getTargetFile());
                 if (source == null || target == null || source.isBlank() || target.isBlank()) continue;
-                relationshipGraph.computeIfAbsent(source, key -> new LinkedHashSet<>()).add(target);
-                if (source.equalsIgnoreCase(target)) continue;
-                if (layers.get("Frontend") != null && source.toLowerCase(Locale.ROOT).contains("frontend")) {
-                    layers.get("Frontend").add(source);
-                }
-                if (layers.get("API") != null && (source.toLowerCase(Locale.ROOT).contains("controller") || target.toLowerCase(Locale.ROOT).contains("controller"))) {
-                    layers.get("API").add(source);
-                }
+                if (isLowLevelArchitectureNoise(source) || isLowLevelArchitectureNoise(target)) continue;
+
+                String sourceLayer = classifyArchitectureComponent(relationship.getSourceFile(), source);
+                String targetLayer = classifyArchitectureComponent(relationship.getTargetFile(), target);
+
+                String sourceNode = sourceLayer != null ? sourceLayer : source;
+                String targetNode = targetLayer != null ? targetLayer : target;
+
+                if (sourceLayer == null && targetLayer == null) continue;
+                if (sourceNode.equalsIgnoreCase(targetNode)) continue;
+
+                relationshipGraph.computeIfAbsent(sourceNode, key -> new LinkedHashSet<>()).add(targetNode);
+                if (sourceLayer != null && layers.get(sourceLayer) != null) layers.get(sourceLayer).add(source);
+                if (targetLayer != null && layers.get(targetLayer) != null) layers.get(targetLayer).add(target);
             }
         }
 
@@ -166,18 +174,52 @@ public class ArchitectureAnalysisService {
         List<Flow> flows = new ArrayList<>();
         for (Map.Entry<String, LinkedHashSet<String>> entry : relationshipGraph.entrySet()) {
             for (String target : entry.getValue()) {
-                flows.add(new Flow(entry.getKey(), target, "Detected parser relationship"));
+                flows.add(new Flow(entry.getKey(), target, "Detected source-backed component flow"));
             }
         }
         return flows.stream().distinct().limit(40).toList();
     }
 
-    private String cleanRelationshipName(String value) {
+    private String normalizeRelationshipNode(String value, String filePath) {
         if (value == null) return null;
         String trimmed = value.trim();
         if (trimmed.isBlank()) return null;
         int dot = trimmed.lastIndexOf('.');
-        return dot >= 0 ? trimmed.substring(dot + 1) : trimmed;
+        String node = dot >= 0 ? trimmed.substring(dot + 1) : trimmed;
+        if (filePath != null && !filePath.isBlank()) {
+            String normalizedFile = filePath.replace('\\', '/');
+            String fileName = normalizedFile.substring(normalizedFile.lastIndexOf('/') + 1);
+            if (fileName.endsWith(".java") || fileName.endsWith(".ts") || fileName.endsWith(".tsx") || fileName.endsWith(".js") || fileName.endsWith(".jsx") || fileName.endsWith(".py")) {
+                String base = fileName.substring(0, fileName.lastIndexOf('.'));
+                if (node.equalsIgnoreCase(base) || node.equalsIgnoreCase(base + "Controller") || node.equalsIgnoreCase(base + "Service") || node.equalsIgnoreCase(base + "Repository")) {
+                    return node;
+                }
+            }
+        }
+        return node;
+    }
+
+    private String classifyArchitectureComponent(String filePath, String symbol) {
+        String text = ((filePath == null ? "" : filePath) + " " + (symbol == null ? "" : symbol)).toLowerCase(Locale.ROOT);
+        if (text.contains("frontend") || text.contains("page") || text.contains("component") || text.contains("view") || text.contains("ui/")) return "Frontend";
+        if (text.contains("controller") || text.contains("route") || text.contains("api") || text.contains("endpoint") || text.contains("handler")) return "API";
+        if (text.contains("service") || text.contains("manager") || text.contains("context") || text.contains("usecase") || text.contains("orchestrator")) return "Services";
+        if (text.contains("repository") || text.contains("entity") || text.contains("model") || text.contains("dto") || text.contains("mapper") || text.contains("schema")) return "Data";
+        if (text.contains("config") || text.contains("docker") || text.contains("kubernetes") || text.contains("deployment") || text.contains("security") || text.contains("auth") || text.contains("gateway") || text.contains("infra")) return "Infrastructure";
+        return null;
+    }
+
+    private boolean isLowLevelArchitectureNoise(String value) {
+        if (value == null) return true;
+        String normalized = value.trim();
+        if (normalized.isBlank()) return true;
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        Set<String> noise = Set.of(
+            "uuid", "list", "arraylist", "hashmap", "map", "set", "queue", "optional", "string", "stringbuilder",
+            "object", "ioexception", "runtimeexception", "exception", "illegalargumentexception", "nullpointerexception",
+            "logger", "console", "jsonnode", "httpclient", "resttemplate", "httprequest", "responseentity"
+        );
+        return noise.contains(lower) || lower.startsWith("java.") || lower.startsWith("javax.") || lower.startsWith("org.") || lower.startsWith("com.") || lower.startsWith("net.") || lower.startsWith("commons.");
     }
 
     private String buildMermaid(List<Flow> flows) {

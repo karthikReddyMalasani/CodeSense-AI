@@ -80,7 +80,7 @@ export default function Layout() {
         </nav>
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--muted-foreground, #475569)', marginBottom: '8px' }}>
             {user?.name || user?.email}
           </div>
           <button className="btn btn-secondary btn-sm" onClick={logout} style={{ width: '100%' }}>
@@ -91,10 +91,10 @@ export default function Layout() {
 
       <main className="main-content">
         <div className="topbar">
-          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '13px', color: 'var(--muted-foreground, #475569)' }}>
             CodeSense AI — Code Intelligence Platform
           </span>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--muted-foreground, #475569)' }}>
             {user?.role}
           </span>
         </div>

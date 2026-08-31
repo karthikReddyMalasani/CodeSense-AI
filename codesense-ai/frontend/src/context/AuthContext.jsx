@@ -25,7 +25,19 @@ export function AuthProvider({ children }) {
         window.location.search.includes('error='));
 
     const loadProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      let session;
+      try {
+        ({ data: { session } } = await supabase.auth.getSession());
+      } catch (error) {
+        localStorage.removeItem('token');
+        if (mounted) {
+          setToken(null);
+          setUser(null);
+          setLoading(false);
+        }
+        console.error('Unable to restore the CodeSense session:', error);
+        return;
+      }
       if (session?.user && !localStorage.getItem('token')) {
         try {
           await exchangeSession(session);

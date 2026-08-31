@@ -33,10 +33,10 @@ function GradeRing({ score, grade }) {
                     strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
                     transform="rotate(-90 64 64)" style={{ transition: 'stroke-dasharray 1s ease' }} />
                 <text x="64" y="58" textAnchor="middle" fontSize="26" fontWeight="800" fill={color}>{score}</text>
-                <text x="64" y="76" textAnchor="middle" fontSize="11" fill="#64748b">/100</text>
+                <text x="64" y="76" textAnchor="middle" fontSize="11" fill="var(--muted-foreground, #64748b)">/100</text>
             </svg>
             <div style={{
-                background: color, color: '#fff', borderRadius: '8px',
+                background: color, color: 'var(--primary-foreground, #ffffff)', borderRadius: '8px',
                 padding: '4px 20px', fontSize: '20px', fontWeight: '800', letterSpacing: '2px'
             }}>{grade}</div>
         </div>
@@ -182,12 +182,12 @@ export default function QualityDashboardPage() {
                                     { label: 'Code Smells', count: report.codeSmellCount, meta: TYPE_META.CODE_SMELL },
                                     { label: 'Performance', count: report.performanceCount, meta: TYPE_META.PERFORMANCE },
                                     { label: 'Maintainability', count: (report.issues || []).filter(i => i.type === 'MAINTAINABILITY').length, meta: TYPE_META.MAINTAINABILITY },
-                                    { label: 'Total Issues', count: (report.issues || []).length, meta: { color: '#475569', bg: '#f8fafc', icon: '📋' } },
+                                    { label: 'Total Issues', count: (report.issues || []).length, meta: { color: 'var(--muted-foreground, #475569)', bg: 'var(--muted, #f8fafc)', icon: '📋' } },
                                 ].map(({ label, count, meta }) => (
                                     <div key={label} style={{ background: meta.bg, borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
                                         <div style={{ fontSize: '22px', marginBottom: '2px' }}>{meta.icon}</div>
                                         <div style={{ fontSize: '24px', fontWeight: '800', color: meta.color }}>{count}</div>
-                                        <div style={{ fontSize: '11px', color: '#64748b' }}>{label}</div>
+                                        <div style={{ fontSize: '11px', color: 'var(--muted-foreground, #64748b)' }}>{label}</div>
                                     </div>
                                 ))}
                             </div>
@@ -245,7 +245,7 @@ export default function QualityDashboardPage() {
                                                 padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '600',
                                                 border: '1px solid', cursor: 'pointer',
                                                 background: activeFilter === f ? 'var(--primary)' : 'transparent',
-                                                color: activeFilter === f ? '#fff' : 'var(--text-muted)',
+                                                color: activeFilter === f ? 'var(--primary-foreground, #ffffff)' : 'var(--text-muted)',
                                                 borderColor: activeFilter === f ? 'var(--primary)' : 'var(--border)'
                                             }}>
                                             {f === 'ALL' ? 'All' : TYPE_META[f]?.label || f}
@@ -271,7 +271,7 @@ export default function QualityDashboardPage() {
                                                 <span style={{ fontSize: '18px' }}>{tm.icon}</span>
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <div style={{ fontWeight: '600', fontSize: '14px' }}>{issue.title}</div>
-                                                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                                    <div style={{ fontSize: '12px', color: 'var(--muted-foreground, #64748b)', marginTop: '2px' }}>
                                                         {issue.filePath && <span style={{ fontFamily: 'monospace' }}>{issue.filePath}</span>}
                                                         {issue.line && <span> · Line {issue.line}</span>}
                                                     </div>
@@ -281,7 +281,7 @@ export default function QualityDashboardPage() {
                                                         padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '700',
                                                         background: sm.color + '22', color: sm.color, border: `1px solid ${sm.color}44`
                                                     }}>{sm.text}</span>
-                                                    <span style={{ fontSize: '11px', color: '#64748b' }}>{isExpanded ? '▲' : '▼'}</span>
+                                                    <span style={{ fontSize: '11px', color: 'var(--muted-foreground, #64748b)' }}>{isExpanded ? '▲' : '▼'}</span>
                                                 </div>
                                             </div>
 
@@ -292,13 +292,13 @@ export default function QualityDashboardPage() {
                                                 }}>
                                                     {issue.description && (
                                                         <div>
-                                                            <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Problem</div>
+                                                            <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--muted-foreground, #64748b)', textTransform: 'uppercase', marginBottom: '4px' }}>Problem</div>
                                                             <div style={{ fontSize: '13px' }}>{issue.description}</div>
                                                         </div>
                                                     )}
                                                     {issue.explanation && (
                                                         <div>
-                                                            <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Why it matters</div>
+                                                            <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--muted-foreground, #64748b)', textTransform: 'uppercase', marginBottom: '4px' }}>Why it matters</div>
                                                             <div style={{ fontSize: '13px' }}>{issue.explanation}</div>
                                                         </div>
                                                     )}

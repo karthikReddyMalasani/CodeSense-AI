@@ -18,12 +18,12 @@ function Progress({ job, repo, onRetry }) {
 function GraphPanel({ result }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('ALL');
-  const [level, setLevel] = useState('ALL');
+  const [level, setLevel] = useState('MODULE');
   const [selected, setSelected] = useState(null);
   const [scale, setScale] = useState(1);
   const nodes = result.nodes || [];
   const edges = result.edges || [];
-  const visible = useMemo(() => nodes.filter(node => { const haystack = `${node.name} ${node.path || ''} ${node.module || ''}`.toLowerCase(); const matchesQuery = !query || haystack.includes(query.toLowerCase()); const matchesLevel = level === 'ALL' || (level === 'FILE' ? node.type === 'FILE' : level === 'CLASS' ? ['CLASS', 'INTERFACE', 'COMPONENT'].includes(node.type) : node.type === level); const matchesFilter = filter === 'ALL' || (filter === 'EXTERNAL' ? node.external : filter === 'INTERNAL' ? !node.external : haystack.includes(filter.toLowerCase())); return matchesQuery && matchesLevel && matchesFilter; }), [nodes, query, filter, level]);
+  const visible = useMemo(() => nodes.filter(node => { const haystack = `${node.name} ${node.path || ''} ${node.module || ''}`.toLowerCase(); const matchesQuery = !query || haystack.includes(query.toLowerCase()); const matchesLevel = level === 'ALL' || (level === 'MODULE' ? node.type === 'MODULE' : level === 'FILE' ? node.type === 'FILE' : level === 'CLASS' ? ['CLASS', 'INTERFACE', 'SERVICE', 'CONTROLLER', 'REPOSITORY', 'ENTITY'].includes(node.type) : node.type === level); const matchesFilter = filter === 'ALL' || (filter === 'EXTERNAL' ? node.external : filter === 'INTERNAL' ? !node.external : haystack.includes(filter.toLowerCase())); return matchesQuery && matchesLevel && matchesFilter; }), [nodes, query, filter, level]);
   const visibleIds = new Set(visible.map(node => node.id));
   const selectedNode = nodes.find(node => node.id === selected);
   const selectedEdges = selected ? edges.filter(edge => edge.source === selected || edge.target === selected) : [];

@@ -53,7 +53,7 @@
 
 .icon-action-btn.active {
   background: var(--cs-primary-gradient, linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%));
-  color: #fff;
+  color: var(--primary-foreground, #ffffff);
 }
 
 .action-icon {
@@ -83,7 +83,7 @@
 
 .btn-small.btn-secondary {
   background: var(--cs-primary-gradient, linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%));
-  color: #fff;
+  color: var(--primary-foreground, #ffffff);
   border-color: transparent;
 }
 
