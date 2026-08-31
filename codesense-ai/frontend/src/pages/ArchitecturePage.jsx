@@ -13,13 +13,53 @@ function StageIcon({ state }) {
   return <Circle size={11} />;
 }
 
+function SystemMapGraph({ result }) {
+  const flows = result?.flows || [];
+  const components = result?.components || [];
+  const nodes = components.length ? components.map((component, index) => ({
+    id: component.name,
+    label: component.name,
+    x: 70 + (index % 2) * 220,
+    y: 55 + Math.floor(index / 2) * 110,
+    type: component.name
+  })) : flows.reduce((acc, flow) => {
+    if (!acc.some(node => node.id === flow.from)) acc.push({ id: flow.from, label: flow.from, x: 80, y: 70 + acc.length * 40, type: flow.from });
+    if (!acc.some(node => node.id === flow.to)) acc.push({ id: flow.to, label: flow.to, x: 360, y: 70 + acc.length * 40, type: flow.to });
+    return acc;
+  }, []);
+
+  if (!nodes.length) {
+    return <div className="architecture-graph-empty">No component relationships were detected for this repository.</div>;
+  }
+
+  const lookup = new Map(nodes.map(node => [node.id, node]));
+
+  return <div className="architecture-graph-wrap">
+    <svg className="architecture-graph" viewBox="0 0 520 260" preserveAspectRatio="xMidYMid meet" aria-label="Component relationships graph">
+      {flows.map((flow, index) => {
+        const from = lookup.get(flow.from);
+        const to = lookup.get(flow.to);
+        if (!from || !to) return null;
+        return <g key={`${flow.from}-${flow.to}-${index}`}>
+          <line x1={from.x + 55} y1={from.y + 28} x2={to.x + 55} y2={to.y + 28} className="architecture-edge" />
+          <circle cx={(from.x + to.x) / 2 + 55} cy={(from.y + to.y) / 2 + 28} r="4" className="architecture-edge-dot" />
+        </g>;
+      })}
+      {nodes.map(node => <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
+        <rect width="110" height="56" rx="12" className="architecture-node-rect" />
+        <text x="55" y="25" textAnchor="middle" className="architecture-node-label">{node.label}</text>
+      </g>)}
+    </svg>
+  </div>;
+}
+
 function ArchitectureResult({ result }) {
   const [expanded, setExpanded] = useState(null);
   if (!result) return null;
   return <div className="architecture-result">
     <section className="architecture-summary card"><div><span className="eyebrow">Evidence-backed assessment</span><h2>{result.architectureStyle}</h2><p>{result.summary}</p></div><ShieldCheck size={28} /></section>
     <div className="architecture-grid">
-      <section className="card architecture-diagram"><div className="architecture-section-title"><div><span className="eyebrow">System map</span><h3>Component relationships</h3></div><span className="evidence-pill">Derived from source</span></div><pre>{result.mermaid}</pre></section>
+      <section className="card architecture-diagram"><div className="architecture-section-title"><div><span className="eyebrow">System map</span><h3>Component relationships</h3></div><span className="evidence-pill">Derived from source</span></div>{result.mermaid ? <SystemMapGraph result={result} /> : <div className="architecture-graph-empty">No relationship graph was generated.</div>} {result.mermaid && <pre className="architecture-mermaid-source">{result.mermaid}</pre>}</section>
       <section className="card"><div className="architecture-section-title"><div><span className="eyebrow">Detected stack</span><h3>Technologies</h3></div></div><div className="technology-cloud">{(result.technologies || []).map(technology => <span key={technology}>{technology}</span>)}</div><div className="flow-list">{(result.flows || []).map(flow => <div className="architecture-flow" key={`${flow.from}-${flow.to}`}><strong>{flow.from}</strong><span>→</span><strong>{flow.to}</strong><small>{flow.evidence}</small></div>)}</div></section>
     </div>
     <section className="card architecture-components"><div className="architecture-section-title"><div><span className="eyebrow">Source inventory</span><h3>Major components</h3></div><span className="panel-caption">{result.components?.length || 0} detected</span></div>{(result.components || []).map((component, index) => <div className="component-row" key={component.name}><button onClick={() => setExpanded(expanded === index ? null : index)}><span className="component-mark">{component.name.slice(0, 1)}</span><span><strong>{component.name}</strong><small>{component.purpose} · {component.technology}</small></span>{expanded === index ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button>{expanded === index && <div className="component-detail"><div>{component.files?.map(file => <code key={file}>{file}</code>)}</div>{component.evidence?.map(item => <p key={`${item.filePath}-${item.symbol}`}><b>{item.confidence}</b> {item.reason} <span>{item.filePath}{item.line ? `:${item.line}` : ''}</span></p>)}</div>}</div>)}</section>

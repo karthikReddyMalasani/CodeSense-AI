@@ -42,24 +42,40 @@ export default function ChatPage() {
 
   const sendMessage = async () => {
     if (!input.trim() || !selectedRepo || loading) return;
+
+    if (selectedRepo.status !== 'READY' || selectedRepo.ingestionStatus !== 'COMPLETED') {
+      const blockingMessage = 'This repository is not ready for AI chat yet. Please wait for ingestion to complete or trigger AI ingestion.';
+      setStatusMessage(blockingMessage);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: blockingMessage,
+        error: true
+      }]);
+      return;
+    }
+
     const question = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: question }]);
     setLoading(true);
+    setStatusMessage('');
 
     try {
       const res = await aiApi.chat({
         projectId, repositoryId: selectedRepo.id, conversationId, question
       });
-      const data = res.data.data;
-      setConversationId(data.conversationId);
-      setMessages(prev => [...prev, {
-        role: 'assistant', content: data.answer, sources: data.sources
-      }]);
-    } catch (err) {
+      const data = res.data.data || res.data || {};
+      setConversationId(data.conversationId || conversationId);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error processing your question. Please try again.',
+        content: data.answer || 'I could not generate a response for this question.',
+        sources: data.sources || []
+      }]);
+    } catch (err) {
+      const message = err.response?.data?.message || 'Sorry, I encountered an error processing your question. Please try again.';
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: message,
         error: true
       }]);
     } finally {

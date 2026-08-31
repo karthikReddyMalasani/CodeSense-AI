@@ -2362,7 +2362,14 @@ pre {
 .architecture-section-title { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
 .architecture-section-title h3 { margin-top: 4px; font-size: 16px; }
 .evidence-pill { padding: 5px 8px; border-radius: 5px; background: #dcfce7; color: #15803d; font-size: 10px; font-weight: 700; }
-.architecture-diagram pre { min-height: 160px; margin: 0; padding: 18px; overflow: auto; border-radius: 8px; background: #0f172a; color: #bae6fd; font-family: var(--font-mono); font-size: 12px; line-height: 1.8; }
+.architecture-graph-wrap { display: block; min-height: 260px; padding: 12px; border: 1px solid var(--cs-border-color); border-radius: 10px; background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.9)); }
+.architecture-graph { display: block; width: 100%; height: 260px; }
+.architecture-edge { stroke: #7dd3fc; stroke-width: 2; stroke-linecap: round; opacity: 0.8; }
+.architecture-edge-dot { fill: #a5f3fc; }
+.architecture-node-rect { fill: rgba(37, 99, 235, 0.22); stroke: #93c5fd; stroke-width: 1.4; }
+.architecture-node-label { fill: #e0f2fe; font-size: 13px; font-weight: 700; text-transform: none; }
+.architecture-mermaid-source { min-height: 110px; margin-top: 12px; padding: 14px; overflow: auto; border-radius: 8px; background: #0f172a; color: #bae6fd; font-family: var(--font-mono); font-size: 11px; line-height: 1.7; }
+.architecture-graph-empty { display: grid; place-items: center; min-height: 180px; border: 1px dashed var(--cs-border-color); border-radius: 10px; background: rgba(15, 23, 42, 0.5); color: var(--cs-text-muted); font-size: 12px; }
 .technology-cloud { display: flex; flex-wrap: wrap; gap: 7px; }
 .technology-cloud span, .component-detail code { padding: 6px 9px; border: 1px solid var(--cs-border-color); border-radius: 5px; background: var(--cs-bg-subtle); color: var(--cs-text-main); font-size: 11px; }
 .flow-list { display: flex; flex-direction: column; gap: 8px; margin-top: 22px; }

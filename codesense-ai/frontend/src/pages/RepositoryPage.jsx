@@ -102,6 +102,35 @@ export default function RepositoryPage() {
         </div>
       </div>
 
+      {selectedRepo && (
+        <div className="card" style={{ marginBottom: '18px', padding: '16px 18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>Repository metadata</div>
+              <div style={{ fontWeight: '700', marginTop: '4px', fontSize: '18px' }}>{selectedRepo.name}</div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="badge badge-blue">{selectedRepo.sourceType || 'ZIP'}</span>
+              <span className="badge badge-gray">{selectedRepo.primaryLanguage || 'Multi-language'}</span>
+              <span className="badge badge-green">{selectedRepo.status || 'READY'}</span>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginTop: '14px' }}>
+            {[
+              ['Files', selectedRepo.totalFiles ?? files.length],
+              ['Chunks', selectedRepo.totalChunks ?? 0],
+              ['Ingestion', selectedRepo.ingestionStatus || 'PENDING'],
+              ['Language', selectedRepo.primaryLanguage || 'Multi-language']
+            ].map(([label, value]) => (
+              <div key={label} style={{ background: 'var(--bg-hover)', borderRadius: '10px', padding: '10px 12px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+                <div style={{ fontWeight: '700', fontSize: '18px', marginTop: '6px' }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <ProjectSubNav activeTab="repository" />
 
       {/* Repo Selector */}

@@ -25,10 +25,17 @@ export default function MetricsPage() {
     setError('');
     try {
       const response = await parserApi.getMetrics(repo.id);
-      setMetrics(response.data.data || response.data);
-    } catch {
+      const payload = response?.data?.data ?? response?.data ?? null;
+      if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
+        setMetrics(null);
+        setError('No parsed metrics are available for this repository yet.');
+        return;
+      }
+      setMetrics(payload);
+    } catch (error) {
       setMetrics(null);
-      setError('Metrics could not be calculated. Try again after ingestion completes.');
+      const message = error?.response?.data?.message || 'Metrics could not be calculated. Please retry.';
+      setError(message);
     } finally {
       setLoading(false);
     }

@@ -23,10 +23,18 @@ export default function SearchPage() {
   const handleSearch = async (e) => {
     e?.preventDefault();
     if (!query.trim() || !selectedRepo) return;
+
+    if (selectedRepo.status !== 'READY' || selectedRepo.ingestionStatus !== 'COMPLETED') {
+      setSearched(true);
+      setResults([]);
+      return;
+    }
+
     setLoading(true); setSearched(true);
     try {
       const res = await aiApi.search({ projectId, repositoryId: selectedRepo.id, query });
-      setResults(res.data.data?.results || []);
+      const payload = res.data?.data || res.data || {};
+      setResults(payload.results || []);
     } catch (err) {
       setResults([]);
     } finally {
@@ -54,10 +62,30 @@ export default function SearchPage() {
 
       <ProjectSubNav activeTab="search" />
 
+      {selectedRepo && selectedRepo.status !== 'READY' || selectedRepo && selectedRepo.ingestionStatus !== 'COMPLETED' ? (
+        <div className="alert alert-info" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          <span>
+            Semantic search is waiting for repository ingestion to finish. Current status: {selectedRepo?.ingestionStatus || 'PENDING'}.
+          </span>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={async () => {
+              try {
+                await aiApi.ingest({ projectId, repositoryId: selectedRepo.id });
+              } catch (err) {
+                // keep user on the page without breaking the search flow
+              }
+            }}
+          >
+            🔄 Ingest AI
+          </button>
+        </div>
+      ) : null}
+
       <form onSubmit={handleSearch} style={{ marginBottom: '24px', display: 'flex', gap: '10px' }}>
         <input className="input" placeholder="e.g. JWT authentication, database connection, error handling..."
           value={query} onChange={e => setQuery(e.target.value)} style={{ flex: 1 }} />
-        <button type="submit" className="btn btn-primary" disabled={loading || !query.trim()}>
+        <button type="submit" className="btn btn-primary" disabled={loading || !query.trim() || !selectedRepo || selectedRepo.ingestionStatus !== 'COMPLETED'}>
           {loading ? <span className="spinner" /> : 'Search'}
         </button>
       </form>

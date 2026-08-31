@@ -166,6 +166,22 @@ export default function ProjectDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const repoSummary = repositories.reduce((acc, repo) => {
+    acc.totalFiles += Number(repo.totalFiles || 0);
+    acc.totalChunks += Number(repo.totalChunks || 0);
+    if (repo.status === 'READY') acc.ready += 1;
+    if (repo.ingestionStatus === 'COMPLETED') acc.ingested += 1;
+    if (repo.status === 'PROCESSING' || repo.ingestionStatus === 'INGESTING' || repo.ingestionStatus === 'PENDING') acc.active += 1;
+    return acc;
+  }, { totalFiles: 0, totalChunks: 0, ready: 0, ingested: 0, active: 0 });
+
+  const overviewCards = [
+    { label: 'Repositories', value: repositories.length, meta: `${repoSummary.ready} ready` },
+    { label: 'Files indexed', value: repoSummary.totalFiles.toLocaleString(), meta: `${repoSummary.totalChunks.toLocaleString()} chunks` },
+    { label: 'AI ingested', value: repoSummary.ingested, meta: `${Math.max(0, repositories.length - repoSummary.ingested)} pending` },
+    { label: 'In progress', value: repoSummary.active, meta: 'Processing / ingesting' }
+  ];
+
   // Selected Repository Deletion State
   const [deleteConfirmRepo, setDeleteConfirmRepo] = useState(null);
   const [deletingRepo, setDeletingRepo] = useState(false);
@@ -227,6 +243,16 @@ export default function ProjectDetailPage() {
 
       {/* Quick Nav / Feature Tabs */}
       <ProjectSubNav activeTab="overview" />
+
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginBottom: '18px' }}>
+        {overviewCards.map(({ label, value, meta }) => (
+          <div key={label} className="card stat-card">
+            <div className="stat-value">{value}</div>
+            <div className="stat-label">{label}</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>{meta}</div>
+          </div>
+        ))}
+      </div>
 
       {/* Repositories */}
       <div style={{ fontWeight: '600', marginBottom: '12px' }}>

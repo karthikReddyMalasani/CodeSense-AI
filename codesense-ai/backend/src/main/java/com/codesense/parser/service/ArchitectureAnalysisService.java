@@ -126,12 +126,76 @@ public class ArchitectureAnalysisService {
                 }
             }
         }
+
         List<Component> components = layers.entrySet().stream().filter(entry -> !entry.getValue().isEmpty()).map(entry -> new Component(entry.getKey(), entry.getKey().equals("API") ? "HTTP/API boundary" : entry.getKey() + " code area", technologies.keySet().stream().filter(key -> key.toLowerCase(Locale.ROOT).contains(entry.getKey().toLowerCase(Locale.ROOT))).findFirst().orElse("Detected from source structure"), new ArrayList<>(entry.getValue()).stream().limit(20).toList(), evidence.stream().filter(item -> entry.getValue().contains(item.symbol())).limit(10).toList())).toList();
+
+        List<Flow> flows = detectRelationshipFlows(parsed, layers);
+        if (flows.isEmpty()) {
+            if (!layers.get("Frontend").isEmpty() && !layers.get("API").isEmpty()) flows.add(new Flow("Frontend", "API", "Detected frontend and API source areas"));
+            if (!layers.get("API").isEmpty() && !layers.get("Services").isEmpty()) flows.add(new Flow("API", "Services", "Controller/route and service naming evidence"));
+            if (!layers.get("Services").isEmpty() && !layers.get("Data").isEmpty()) flows.add(new Flow("Services", "Data", "Service/repository naming evidence"));
+        }
+
+        String mermaid = buildMermaid(flows);
+        return new Result("Evidence-backed layered application architecture", "The report is derived from " + parsed.getFiles().size() + " parsed files and " + parsed.getTotalRelationships() + " parser relationships. Confirmed findings use parser metadata; path-based areas are marked inferred.", components, flows, apis, technologies.keySet().stream().toList(), evidence.stream().limit(60).toList(), mermaid);
+    }
+
+    private List<Flow> detectRelationshipFlows(ParsedRepositoryDTO parsed, Map<String, LinkedHashSet<String>> layers) {
+        Map<String, LinkedHashSet<String>> relationshipGraph = new LinkedHashMap<>();
+
+        for (ParsedFileDTO file : parsed.getFiles()) {
+            if (file == null || file.getRelationships() == null) continue;
+            for (var relationship : file.getRelationships()) {
+                if (relationship == null) continue;
+                String source = cleanRelationshipName(relationship.getSourceElement());
+                String target = cleanRelationshipName(relationship.getTargetElement());
+                if (source == null || target == null || source.isBlank() || target.isBlank()) continue;
+                relationshipGraph.computeIfAbsent(source, key -> new LinkedHashSet<>()).add(target);
+                if (source.equalsIgnoreCase(target)) continue;
+                if (layers.get("Frontend") != null && source.toLowerCase(Locale.ROOT).contains("frontend")) {
+                    layers.get("Frontend").add(source);
+                }
+                if (layers.get("API") != null && (source.toLowerCase(Locale.ROOT).contains("controller") || target.toLowerCase(Locale.ROOT).contains("controller"))) {
+                    layers.get("API").add(source);
+                }
+            }
+        }
+
+        if (relationshipGraph.isEmpty()) return List.of();
+
         List<Flow> flows = new ArrayList<>();
-        if (!layers.get("Frontend").isEmpty() && !layers.get("API").isEmpty()) flows.add(new Flow("Frontend", "API", "Detected frontend and API source areas"));
-        if (!layers.get("API").isEmpty() && !layers.get("Services").isEmpty()) flows.add(new Flow("API", "Services", "Controller/route and service naming evidence"));
-        if (!layers.get("Services").isEmpty() && !layers.get("Data").isEmpty()) flows.add(new Flow("Services", "Data", "Service/repository naming evidence"));
-        return new Result("Evidence-backed layered application architecture", "The report is derived from " + parsed.getFiles().size() + " parsed files and " + parsed.getTotalRelationships() + " parser relationships. Confirmed findings use parser metadata; path-based areas are marked inferred.", components, flows, apis, technologies.keySet().stream().toList(), evidence.stream().limit(60).toList(), "graph LR\n" + flows.stream().map(flow -> "  " + id(flow.from()) + "[" + flow.from() + "] --> " + id(flow.to()) + "[" + flow.to() + "]").reduce("", (left, right) -> left + right + "\n"));
+        for (Map.Entry<String, LinkedHashSet<String>> entry : relationshipGraph.entrySet()) {
+            for (String target : entry.getValue()) {
+                flows.add(new Flow(entry.getKey(), target, "Detected parser relationship"));
+            }
+        }
+        return flows.stream().distinct().limit(40).toList();
+    }
+
+    private String cleanRelationshipName(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        if (trimmed.isBlank()) return null;
+        int dot = trimmed.lastIndexOf('.');
+        return dot >= 0 ? trimmed.substring(dot + 1) : trimmed;
+    }
+
+    private String buildMermaid(List<Flow> flows) {
+        StringBuilder builder = new StringBuilder("graph LR\n");
+        if (flows == null || flows.isEmpty()) {
+            builder.append("  repo((Repository))\n");
+            return builder.toString();
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        for (Flow flow : flows) {
+            String from = id(flow.from());
+            String to = id(flow.to());
+            if (from == null || to == null || from.isBlank() || to.isBlank()) continue;
+            String key = from + "->" + to;
+            if (!seen.add(key)) continue;
+            builder.append("  ").append(from).append("[").append(flow.from()).append("] --> ").append(to).append("[").append(flow.to()).append("]\n");
+        }
+        return builder.toString();
     }
 
     private List<Api> detectApis(ParsedRepositoryDTO parsed) {
