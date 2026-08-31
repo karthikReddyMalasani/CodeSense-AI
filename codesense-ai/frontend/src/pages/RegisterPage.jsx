@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/LoginPage.css';
 
 export default function RegisterPage() {
-  const { signUpWithVerification, sendMagicLink, socialLogin } = useAuth();
+  const { register, sendMagicLink, socialLogin } = useAuth();
   const navigate = useNavigate();
 
   // step: 'form' | 'verify-email' | 'done'
@@ -67,9 +67,8 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      // Always send verification email first — backend account created after email link click
-      await signUpWithVerification(form.name, form.email, form.password);
-      setStep('verify-email');
+      await register(form.name, form.email, form.password);
+      navigate('/dashboard');
     } catch (err) {
       const errMsg = err.message || '';
       if (errMsg.toLowerCase().includes('already registered') || errMsg.toLowerCase().includes('already exist')) {

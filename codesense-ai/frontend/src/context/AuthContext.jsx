@@ -245,28 +245,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // signUpWithVerification: sends Supabase verification email.
-  // Backend account is created automatically when user clicks the email link
-  // (handled via onAuthStateChange -> exchangeSession -> authApi.socialLogin)
+  // Kept as a compatibility wrapper for existing registration consumers.
   const signUpWithVerification = async (name, email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: { name: name.trim() },
-        emailRedirectTo: `${window.location.origin}/dashboard`
-      }
-    });
-    if (error) throw error;
-
-    // If Supabase returns a session immediately (email confirmations disabled in Supabase dashboard)
-    // still force email verification by signing out and asking user to check email
-    if (data.session && !data.user?.email_confirmed_at) {
-      await supabase.auth.signOut();
-    }
-
-    // Return info for UI — user must click the email link
-    return { email: email.trim(), name: name.trim() };
+    return register(name, email, password);
   };
 
   const register = async (name, email, password) => {
