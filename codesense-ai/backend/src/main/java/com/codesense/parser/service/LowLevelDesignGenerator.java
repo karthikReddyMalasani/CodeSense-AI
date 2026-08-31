@@ -145,11 +145,15 @@ public class LowLevelDesignGenerator {
         if (className.endsWith("Exception")) return "Exception handling";
         if (className.endsWith("Util")) return "Utility class";
 
-        String lower = filePath.toLowerCase();
+        String lower = safePath(filePath).toLowerCase();
         if (lower.contains("service")) return "Service class";
         if (lower.contains("controller")) return "Controller class";
         if (lower.contains("repository")) return "Repository class";
         return "Domain class";
+    }
+
+    private String safePath(String filePath) {
+        return filePath == null ? "" : filePath;
     }
 
     private List<ClassRelationship> generateClassRelationships(ParsedRepositoryDTO parsed) {
@@ -402,7 +406,7 @@ public class LowLevelDesignGenerator {
 
     private boolean containsAuthElements(ParsedRepositoryDTO parsed) {
         return parsed.getFiles().stream()
-                .anyMatch(f -> f.getFilePath().toLowerCase().contains("auth") || 
+                .anyMatch(f -> safePath(f.getFilePath()).toLowerCase().contains("auth") ||
                         (f.getElements() != null && f.getElements().stream().anyMatch(e -> e.getName() != null && e.getName().contains("Auth"))));
     }
 

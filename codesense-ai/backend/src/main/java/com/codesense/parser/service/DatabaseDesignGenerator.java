@@ -206,7 +206,7 @@ public class DatabaseDesignGenerator {
 
     private String detectDatabaseType(ParsedRepositoryDTO parsed) {
         for (ParsedFileDTO file : parsed.getFiles()) {
-            String lower = file.getFilePath().toLowerCase();
+            String lower = safePath(file.getFilePath()).toLowerCase();
             if (lower.contains("postgres") || lower.endsWith("postgresql")) return "PostgreSQL";
             if (lower.contains("mysql")) return "MySQL";
             if (lower.contains("mongo")) return "MongoDB";
@@ -219,6 +219,10 @@ public class DatabaseDesignGenerator {
             }
         }
         return "Relational Database (detected: SQL-based persistence)";
+    }
+
+    private String safePath(String filePath) {
+        return filePath == null ? "" : filePath;
     }
 
     private List<IndexInfo> generateIndexes(ParsedRepositoryDTO parsed) {

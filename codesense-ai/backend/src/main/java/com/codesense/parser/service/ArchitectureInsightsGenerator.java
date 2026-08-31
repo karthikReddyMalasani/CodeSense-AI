@@ -194,8 +194,8 @@ public class ArchitectureInsightsGenerator {
     }
 
     private boolean hasFrontendBackendSeparation(ParsedRepositoryDTO parsed) {
-        return parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("frontend")) &&
-               parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("backend"));
+         return parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("frontend")) &&
+             parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("backend"));
     }
 
     private long countClasses(ParsedRepositoryDTO parsed, String pattern) {
@@ -207,11 +207,15 @@ public class ArchitectureInsightsGenerator {
 
     private boolean hasIntegrationPatterns(ParsedRepositoryDTO parsed) {
         return parsed.getFiles().stream()
-                .anyMatch(f -> f.getFilePath().toLowerCase().contains("ai") ||
-                        f.getFilePath().toLowerCase().contains("gemini") ||
-                        f.getFilePath().toLowerCase().contains("openai") ||
-                        f.getFilePath().toLowerCase().contains("auth") ||
-                        f.getFilePath().toLowerCase().contains("oauth"));
+                .anyMatch(f -> safePath(f.getFilePath()).toLowerCase().contains("ai") ||
+                        safePath(f.getFilePath()).toLowerCase().contains("gemini") ||
+                        safePath(f.getFilePath()).toLowerCase().contains("openai") ||
+                        safePath(f.getFilePath()).toLowerCase().contains("auth") ||
+                        safePath(f.getFilePath()).toLowerCase().contains("oauth"));
+    }
+
+    private String safePath(String filePath) {
+        return filePath == null ? "" : filePath;
     }
 
     private List<String> findLargeClasses(ParsedRepositoryDTO parsed) {

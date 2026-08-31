@@ -50,7 +50,7 @@ public class HighLevelDesignGenerator {
         // Analyze file paths and class names to infer purpose
         Set<String> keywords = new HashSet<>();
         for (ParsedFileDTO file : parsed.getFiles()) {
-            String path = file.getFilePath().toLowerCase();
+            String path = safePath(file.getFilePath()).toLowerCase();
             if (path.contains("auth")) keywords.add("authentication");
             if (path.contains("payment") || path.contains("billing")) keywords.add("payment processing");
             if (path.contains("chat") || path.contains("message")) keywords.add("messaging");
@@ -78,7 +78,7 @@ public class HighLevelDesignGenerator {
 
         // Check for authentication
         long authClasses = parsed.getFiles().stream()
-                .filter(f -> f.getFilePath().toLowerCase().contains("auth"))
+            .filter(f -> safePath(f.getFilePath()).toLowerCase().contains("auth"))
                 .count();
         if (authClasses > 0) capabilities.add("Authentication and Authorization");
 
@@ -90,7 +90,7 @@ public class HighLevelDesignGenerator {
         if (entities > 0) capabilities.add("Data persistence and modeling");
 
         // Check for frontend
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("frontend") || f.getFilePath().endsWith(".jsx") || f.getFilePath().endsWith(".tsx"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("frontend") || safePath(f.getFilePath()).endsWith(".jsx") || safePath(f.getFilePath()).endsWith(".tsx"))) {
             capabilities.add("Web user interface");
         }
 
@@ -107,28 +107,28 @@ public class HighLevelDesignGenerator {
     private List<String> detectMainTechnologies(ParsedRepositoryDTO parsed) {
         Set<String> techs = new LinkedHashSet<>();
 
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().endsWith(".java"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).endsWith(".java"))) {
             techs.add("Java");
         }
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().endsWith(".jsx") || f.getFilePath().endsWith(".tsx"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).endsWith(".jsx") || safePath(f.getFilePath()).endsWith(".tsx"))) {
             techs.add("React");
         }
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("frontend"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("frontend"))) {
             techs.add("Web Frontend");
         }
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().endsWith("pom.xml"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).endsWith("pom.xml"))) {
             techs.add("Maven");
         }
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().endsWith("package.json"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).endsWith("package.json"))) {
             techs.add("Node.js/npm");
         }
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("docker"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("docker"))) {
             techs.add("Docker");
         }
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("postgres") || f.getFilePath().contains("database"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("postgres") || safePath(f.getFilePath()).contains("database"))) {
             techs.add("PostgreSQL");
         }
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("redis"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("redis"))) {
             techs.add("Redis");
         }
 
@@ -203,7 +203,7 @@ public class HighLevelDesignGenerator {
     }
 
     private String detectComponentType(String filePath) {
-        String lower = filePath.toLowerCase();
+        String lower = safePath(filePath).toLowerCase();
         if (lower.contains("frontend") || lower.contains("component") || lower.contains("page") || lower.contains("ui/")) return "Frontend";
         if (lower.contains("controller") || lower.contains("route") || lower.contains("api")) return "API/Controller";
         if (lower.contains("service") || lower.contains("manager") || lower.contains("orchestrat")) return "Services";
@@ -231,6 +231,10 @@ public class HighLevelDesignGenerator {
         if (lower.contains("component") || lower.contains("page")) return "Frontend";
 
         return null;
+    }
+
+    private String safePath(String filePath) {
+        return filePath == null ? "" : filePath;
     }
 
     private String inferComponentTechnology(String componentType, ParsedRepositoryDTO parsed) {
@@ -300,11 +304,11 @@ public class HighLevelDesignGenerator {
 
     private List<ComponentCommunication> inferStandardCommunications(ParsedRepositoryDTO parsed) {
         List<ComponentCommunication> comms = new ArrayList<>();
-        boolean hasFrontend = parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("frontend"));
-        boolean hasApi = parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("controller"));
-        boolean hasService = parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("service"));
-        boolean hasRepository = parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("repository"));
-        boolean hasEntity = parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("entity"));
+        boolean hasFrontend = parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("frontend"));
+        boolean hasApi = parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("controller"));
+        boolean hasService = parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("service"));
+        boolean hasRepository = parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("repository"));
+        boolean hasEntity = parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("entity"));
 
         if (hasFrontend && hasApi) {
             comms.add(ComponentCommunication.builder()
@@ -362,8 +366,8 @@ public class HighLevelDesignGenerator {
 
     private String inferArchitecturalStyle(ParsedRepositoryDTO parsed) {
         // Detect if it's layered, microservices, etc.
-        long frontendFiles = parsed.getFiles().stream().filter(f -> f.getFilePath().contains("frontend")).count();
-        long backendFiles = parsed.getFiles().stream().filter(f -> f.getFilePath().contains("backend")).count();
+        long frontendFiles = parsed.getFiles().stream().filter(f -> safePath(f.getFilePath()).contains("frontend")).count();
+        long backendFiles = parsed.getFiles().stream().filter(f -> safePath(f.getFilePath()).contains("backend")).count();
         long serviceCount = parsed.getFiles().stream()
                 .flatMap(f -> f.getElements().stream())
                 .filter(e -> e.getName() != null && e.getName().endsWith("Service"))
@@ -373,7 +377,7 @@ public class HighLevelDesignGenerator {
             return "Layered Monolith (Frontend + Backend)";
         } else if (serviceCount > 10) {
             return "Service-Oriented Architecture";
-        } else if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("docker"))) {
+        } else if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("docker"))) {
             return "Containerized Application";
         }
         return "Modular Layered Architecture";
@@ -425,19 +429,19 @@ public class HighLevelDesignGenerator {
     private DeploymentArchitecture detectDeploymentArchitecture(ParsedRepositoryDTO parsed) {
         List<DeploymentComponent> components = new ArrayList<>();
 
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("dockerfile") || f.getFilePath().contains("docker-compose"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("dockerfile") || safePath(f.getFilePath()).contains("docker-compose"))) {
             components.add(DeploymentComponent.builder()
                     .name("Containerized Services").hostingType("Docker Containers")
                     .technology("Docker & Docker Compose").evidence("Dockerfile/docker-compose.yml detected").build());
         }
 
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().contains("kubernetes") || f.getFilePath().contains("k8s"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).contains("kubernetes") || safePath(f.getFilePath()).contains("k8s"))) {
             components.add(DeploymentComponent.builder()
                     .name("Kubernetes Orchestration").hostingType("Kubernetes")
                     .technology("Kubernetes").evidence("K8s manifest files detected").build());
         }
 
-        if (parsed.getFiles().stream().anyMatch(f -> f.getFilePath().endsWith("vercel.json") || f.getFilePath().endsWith("netlify.toml"))) {
+        if (parsed.getFiles().stream().anyMatch(f -> safePath(f.getFilePath()).endsWith("vercel.json") || safePath(f.getFilePath()).endsWith("netlify.toml"))) {
             components.add(DeploymentComponent.builder()
                     .name("Frontend Hosting").hostingType("Cloud")
                     .technology("Vercel/Netlify").evidence("Cloud deployment config detected").build());
