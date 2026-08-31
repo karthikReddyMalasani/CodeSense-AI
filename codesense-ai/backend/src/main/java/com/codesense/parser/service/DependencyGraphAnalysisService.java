@@ -104,11 +104,18 @@ public class DependencyGraphAnalysisService {
     private String resolveNodeId(Model model, String filePath, String symbol, String repositoryKey) {
         String normalizedSymbol = normalizeSymbolName(symbol);
         if (normalizedSymbol == null || normalizedSymbol.isBlank()) return null;
-        for (Node node : model.nodes) {
-            if (node.name().equalsIgnoreCase(normalizedSymbol)) return node.id();
-            if (node.path() != null && node.path().equalsIgnoreCase(filePath) && node.name().equalsIgnoreCase(normalizedSymbol)) return node.id();
-            if (node.id() != null && node.id().endsWith("#" + normalizedSymbol)) return node.id();
-        }
+
+        List<Node> sameFileMatches = model.nodes.stream()
+            .filter(node -> node.path() != null && node.path().equalsIgnoreCase(filePath))
+            .filter(node -> node.name().equalsIgnoreCase(normalizedSymbol))
+            .toList();
+        if (sameFileMatches.size() == 1) return sameFileMatches.get(0).id();
+
+        List<Node> globalMatches = model.nodes.stream()
+            .filter(node -> node.name().equalsIgnoreCase(normalizedSymbol))
+            .toList();
+        if (globalMatches.size() == 1) return globalMatches.get(0).id();
+
         return repositoryKey + filePath + "#" + normalizedSymbol;
     }
 
@@ -192,10 +199,10 @@ public class DependencyGraphAnalysisService {
         if (normalized.isBlank()) return true;
         String lower = normalized.toLowerCase(Locale.ROOT);
         Set<String> noise = Set.of(
-            "uuid", "list", "arraylist", "hashmap", "hashset", "map", "set", "queue",
+            "uuid", "list", "arraylist", "hashmap", "hashset", "set", "queue",
             "optional", "string", "integer", "long", "boolean", "double", "float",
             "object", "ioexception", "runtimeexception", "exception", "illegalargumentexception",
-            "nullpointerexception", "logger", "console", "toString", "stream", "map", "filter",
+            "nullpointerexception", "logger", "console", "tostring", "stream", "filter",
             "collect", "log", "info", "warn", "error", "json", "responseentity", "modelmapper"
         );
         if (noise.contains(lower)) return true;
