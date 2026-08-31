@@ -46,6 +46,7 @@ public class ArchitectureAnalysisService {
                 analysisExecutor);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ArchitectureAnalysisService(RepositoryParserService parserService,
                                         RepositoryFileRepository fileRepository,
                                         HighLevelDesignGenerator hldGenerator,
