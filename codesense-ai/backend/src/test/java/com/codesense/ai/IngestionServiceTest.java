@@ -90,7 +90,6 @@ class IngestionServiceTest {
 
         when(repositoryFileRepository.findByRepositoryIdAndIgnoredFalse(repositoryId))
             .thenReturn(List.of(file));
-        when(languageDetectionService.isSupportedSourceLanguage("Java")).thenReturn(true);
 
         // chunkByText returns a list of RepositoryChunk objects
         RepositoryChunk chunk = new RepositoryChunk();

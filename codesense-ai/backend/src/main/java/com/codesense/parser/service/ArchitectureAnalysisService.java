@@ -37,6 +37,17 @@ public class ArchitectureAnalysisService {
 
     public ArchitectureAnalysisService(RepositoryParserService parserService,
                                         RepositoryFileRepository fileRepository,
+                                        Executor analysisExecutor) {
+        this(parserService, fileRepository,
+                new HighLevelDesignGenerator(),
+                new LowLevelDesignGenerator(),
+                new DatabaseDesignGenerator(),
+                new ArchitectureInsightsGenerator(),
+                analysisExecutor);
+    }
+
+    public ArchitectureAnalysisService(RepositoryParserService parserService,
+                                        RepositoryFileRepository fileRepository,
                                         HighLevelDesignGenerator hldGenerator,
                                         LowLevelDesignGenerator lldGenerator,
                                         DatabaseDesignGenerator dbGenerator,
@@ -118,6 +129,14 @@ public class ArchitectureAnalysisService {
         job.completedStage = Math.max(job.completedStage, index);
         job.currentStage = STAGES.get(Math.min(index, STAGES.size() - 1));
         job.updatedAt = Instant.now();
+    }
+
+    private Result buildResult(ParsedRepositoryDTO parsed, List<RepositoryFile> files, Map<String, Integer> technologies, List<Api> apis) {
+        return buildResult(parsed, files, technologies, apis,
+                HighLevelDesign.builder().build(),
+                LowLevelDesign.builder().build(),
+                DatabaseDesign.builder().build(),
+                ArchitectureInsights.builder().build());
     }
 
     private Result buildResult(ParsedRepositoryDTO parsed, List<RepositoryFile> files, Map<String, Integer> technologies, List<Api> apis, HighLevelDesign hld, LowLevelDesign lld, DatabaseDesign databaseDesign, ArchitectureInsights insights) {
