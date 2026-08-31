@@ -240,7 +240,11 @@ function ArchitectureResult({ result }) {
                 {(table.columns || []).map((column) => (
                   <li key={`${table.tableName}-${column.fieldName}`}>
                     <span>{column.fieldName}</span>
-                    <small>{column.type || 'unknown'}</small>
+                    <small>
+                      {column.type || 'unknown'}
+                      {' | Primary Key: '}
+                      {column.isPrimaryKey === true ? 'Yes' : column.isPrimaryKey === false ? 'No' : 'Unknown'}
+                    </small>
                   </li>
                 ))}
               </ul>

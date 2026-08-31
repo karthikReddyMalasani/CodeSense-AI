@@ -188,7 +188,8 @@ public class DatabaseDesignGenerator {
             sb.append("  ").append(table.getTableName().toUpperCase()).append(" {\n");
             for (TableColumn col : table.getColumns().stream().limit(8).collect(Collectors.toList())) {
                 String type = col.getType();
-                String marker = col.getIsPrimaryKey() ? " PK" : col.getIsForeignKey() ? " FK" : "";
+                String marker = Boolean.TRUE.equals(col.getIsPrimaryKey()) ? " PK"
+                        : Boolean.TRUE.equals(col.getIsForeignKey()) ? " FK" : "";
                 sb.append("    ").append(type).append(" ").append(col.getColumnName()).append(marker).append("\n");
             }
             sb.append("  }\n");
@@ -196,7 +197,8 @@ public class DatabaseDesignGenerator {
 
         // Add relationships
         for (TableRelationship rel : relationships) {
-            String notation = "one-to-many".equals(rel.getType().toLowerCase()) ? "||--o{" : "||--|";
+            String relationshipType = rel.getType() == null ? "" : rel.getType().toLowerCase(Locale.ROOT);
+            String notation = "one-to-many".equals(relationshipType) ? "||--o{" : "||--|";
             sb.append("  ").append(rel.getFromTable().toUpperCase()).append(" ")
                     .append(notation).append(" ").append(rel.getToTable().toUpperCase()).append(" : \"\"\n");
         }
