@@ -2,6 +2,7 @@ package com.codesense.parser.service;
 
 import com.codesense.integration.parser.dto.ParsedFileDTO;
 import com.codesense.integration.parser.dto.ParsedRepositoryDTO;
+import com.codesense.parser.model.*;
 import com.codesense.repository.model.RepositoryFile;
 import com.codesense.repository.repository.RepositoryFileRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,14 +28,26 @@ public class ArchitectureAnalysisService {
 
     private final RepositoryParserService parserService;
     private final RepositoryFileRepository fileRepository;
+    private final HighLevelDesignGenerator hldGenerator;
+    private final LowLevelDesignGenerator lldGenerator;
+    private final DatabaseDesignGenerator dbGenerator;
+    private final ArchitectureInsightsGenerator insightsGenerator;
     private final Executor analysisExecutor;
     private final Map<UUID, AnalysisJob> jobs = new ConcurrentHashMap<>();
 
     public ArchitectureAnalysisService(RepositoryParserService parserService,
                                         RepositoryFileRepository fileRepository,
+                                        HighLevelDesignGenerator hldGenerator,
+                                        LowLevelDesignGenerator lldGenerator,
+                                        DatabaseDesignGenerator dbGenerator,
+                                        ArchitectureInsightsGenerator insightsGenerator,
                                         @Qualifier("aiTaskExecutor") Executor analysisExecutor) {
         this.parserService = parserService;
         this.fileRepository = fileRepository;
+        this.hldGenerator = hldGenerator;
+        this.lldGenerator = lldGenerator;
+        this.dbGenerator = dbGenerator;
+        this.insightsGenerator = insightsGenerator;
         this.analysisExecutor = analysisExecutor;
     }
 
@@ -62,21 +75,31 @@ public class ArchitectureAnalysisService {
             ParsedRepositoryDTO parsed = parserService.parseRepository(job.repositoryId);
             stage(job, 2);
             stage(job, 3);
-            Map<String, Integer> technologies = detectTechnologies(sourceFiles);
+
+            // Generate comprehensive architecture
             stage(job, 4);
+            HighLevelDesign hld = hldGenerator.generate(parsed);
             stage(job, 5);
+            LowLevelDesign lld = lldGenerator.generate(parsed);
             stage(job, 6);
-            List<Api> apis = detectApis(parsed);
             stage(job, 7);
             stage(job, 8);
+            DatabaseDesign databaseDesign = dbGenerator.generate(parsed);
             stage(job, 9);
+            ArchitectureInsights insights = insightsGenerator.generate(parsed);
             stage(job, 10);
+
+            // Generate legacy data for backward compatibility
+            Map<String, Integer> technologies = detectTechnologies(sourceFiles);
             stage(job, 11);
+            List<Api> apis = detectApis(parsed);
             stage(job, 12);
             stage(job, 13);
             stage(job, 14);
-            Result result = buildResult(parsed, sourceFiles, technologies, apis);
             stage(job, 15);
+
+            // Build result with all architecture data
+            Result result = buildResult(parsed, sourceFiles, technologies, apis, hld, lld, databaseDesign, insights);
             stage(job, 16);
             stage(job, 17);
             stage(job, 18);
@@ -97,7 +120,7 @@ public class ArchitectureAnalysisService {
         job.updatedAt = Instant.now();
     }
 
-    private Result buildResult(ParsedRepositoryDTO parsed, List<RepositoryFile> files, Map<String, Integer> technologies, List<Api> apis) {
+    private Result buildResult(ParsedRepositoryDTO parsed, List<RepositoryFile> files, Map<String, Integer> technologies, List<Api> apis, HighLevelDesign hld, LowLevelDesign lld, DatabaseDesign databaseDesign, ArchitectureInsights insights) {
         Map<String, LinkedHashSet<String>> layers = new LinkedHashMap<>();
         layers.put("Frontend", new LinkedHashSet<>()); layers.put("API", new LinkedHashSet<>());
         layers.put("Services", new LinkedHashSet<>()); layers.put("Data", new LinkedHashSet<>());
@@ -138,7 +161,7 @@ public class ArchitectureAnalysisService {
 
         String mermaid = buildMermaid(flows);
         String summary = "This layered modular architecture is derived from " + parsed.getFiles().size() + " parsed files and " + parsed.getTotalRelationships() + " parser relationships. Confirmed findings use parser metadata; path-based areas are marked inferred.";
-        return new Result("Evidence-backed layered application architecture", summary, components, flows, apis, technologies.keySet().stream().toList(), evidence.stream().limit(60).toList(), mermaid);
+        return new Result(hld, lld, databaseDesign, insights, "Evidence-backed layered application architecture", summary, components, flows, apis, technologies.keySet().stream().toList(), evidence.stream().limit(60).toList(), mermaid);
     }
 
     private List<Flow> detectRelationshipFlows(ParsedRepositoryDTO parsed, Map<String, LinkedHashSet<String>> layers) {
@@ -274,7 +297,7 @@ public class ArchitectureAnalysisService {
         JobView view() { return new JobView(id, repositoryId, status, completedStage + 1, STAGES.size(), currentStage, error, result, createdAt, updatedAt); }
     }
     public record JobView(UUID jobId, UUID repositoryId, Status status, int completedStages, int totalStages, String currentStage, String error, Result result, Instant createdAt, Instant updatedAt) {}
-    public record Result(String architectureStyle, String summary, List<Component> components, List<Flow> flows, List<Api> apis, List<String> technologies, List<Evidence> evidence, String mermaid) {}
+    public record Result(HighLevelDesign hld, LowLevelDesign lld, DatabaseDesign databaseDesign, ArchitectureInsights insights, String architectureStyle, String summary, List<Component> components, List<Flow> flows, List<Api> apis, List<String> technologies, List<Evidence> evidence, String mermaid) {}
     public record Component(String name, String purpose, String technology, List<String> files, List<Evidence> evidence) {}
     public record Flow(String from, String to, String evidence) {}
     public record Api(String method, String endpoint, String controller, String sourceFile) {}
