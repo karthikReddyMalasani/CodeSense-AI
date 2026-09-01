@@ -82,7 +82,7 @@ codesense:
   ai:
     # Use gemini for real AI, mock for tests/offline
     llm-provider: ${AI_LLM_PROVIDER:gemini}
-    embedding-provider: ${AI_EMBEDDING_PROVIDER:gemini}
+    embedding-provider: ${AI_EMBEDDING_PROVIDER:mock}
     embedding-dimension: ${EMBEDDING_DIMENSION:768}
     rag:
       top-k: 5

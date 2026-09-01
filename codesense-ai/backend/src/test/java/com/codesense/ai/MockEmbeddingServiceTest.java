@@ -1,8 +1,11 @@
 package com.codesense.ai;
 
+import com.codesense.ai.embedding.GeminiEmbeddingService;
 import com.codesense.ai.embedding.MockEmbeddingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 
@@ -69,6 +72,20 @@ class MockEmbeddingServiceTest {
         ReflectionTestUtils.setField(service, "dimension", 768);
 
         float[] embedding = service.generateEmbedding("test normalization");
+        double norm = 0;
+        for (float v : embedding) norm += v * v;
+        assertThat(Math.sqrt(norm)).isCloseTo(1.0, within(0.001));
+    }
+
+    @Test
+    void geminiEmbeddingService_fallsBackToMockEmbedding_whenApiKeyMissing() {
+        GeminiEmbeddingService service = new GeminiEmbeddingService(WebClient.builder(), new ObjectMapper());
+        ReflectionTestUtils.setField(service, "apiKey", "");
+        ReflectionTestUtils.setField(service, "dimension", 768);
+
+        float[] embedding = service.generateEmbedding("jwt authentication flow");
+
+        assertThat(embedding).hasSize(768);
         double norm = 0;
         for (float v : embedding) norm += v * v;
         assertThat(Math.sqrt(norm)).isCloseTo(1.0, within(0.001));

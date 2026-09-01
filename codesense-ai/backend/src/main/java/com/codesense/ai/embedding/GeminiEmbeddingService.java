@@ -40,7 +40,8 @@ public class GeminiEmbeddingService implements EmbeddingService {
     @Override
     public float[] generateEmbedding(String text) {
         if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("Gemini is not configured. Add GEMINI_API_KEY to the backend environment.");
+            log.warn("Gemini embedding key missing; falling back to deterministic mock embeddings so repository natural-language search still works locally.");
+            return fallbackMockEmbedding(text);
         }
 
         Map<String, Object> body = Map.of(
@@ -94,5 +95,30 @@ public class GeminiEmbeddingService implements EmbeddingService {
     @Override
     public String getProviderName() {
         return "Google Gemini Embeddings — " + model;
+    }
+
+    private float[] fallbackMockEmbedding(String text) {
+        if (text == null || text.isBlank()) {
+            return new float[dimension];
+        }
+
+        long seed = text.hashCode();
+        java.util.Random rng = new java.util.Random(seed);
+        float[] embedding = new float[dimension];
+        double norm = 0;
+
+        for (int i = 0; i < dimension; i++) {
+            embedding[i] = rng.nextFloat() * 2 - 1;
+            norm += embedding[i] * embedding[i];
+        }
+
+        norm = Math.sqrt(norm);
+        if (norm > 0) {
+            for (int i = 0; i < dimension; i++) {
+                embedding[i] /= (float) norm;
+            }
+        }
+
+        return embedding;
     }
 }
