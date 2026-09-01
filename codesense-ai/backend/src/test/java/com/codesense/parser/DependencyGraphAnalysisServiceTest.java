@@ -92,6 +92,68 @@ class DependencyGraphAnalysisServiceTest {
         assertThat(callEdges).isEqualTo(1);
     }
 
+    @Test
+    void semanticGraphIgnoresFilesystemContainmentArtifacts() throws Exception {
+        DependencyGraphAnalysisService service = new DependencyGraphAnalysisService(null, null, Runnable::run);
+        Method buildModel = DependencyGraphAnalysisService.class.getDeclaredMethod("buildModel", ParsedRepositoryDTO.class, Map.class);
+        buildModel.setAccessible(true);
+
+        ParsedFileDTO controllerFile = ParsedFileDTO.builder()
+                .filePath("backend/src/main/java/com/codesense/controller/AuthController.java")
+                .language("Java")
+                .elements(List.of(
+                        CodeElementDTO.builder().name("AuthController").type("CLASS").build(),
+                        CodeElementDTO.builder().name("AuthService").type("CLASS").build()))
+                .relationships(List.of(
+                        relationship("AuthController", "AuthService")))
+                .build();
+
+        ParsedFileDTO metadataFile = ParsedFileDTO.builder()
+                .filePath(".gitignore")
+                .language("Text")
+                .elements(List.of(CodeElementDTO.builder().name(".gitignore").type("MODULE").build()))
+                .build();
+
+        Object model = buildModel.invoke(service, ParsedRepositoryDTO.builder()
+                .repositoryId("repository")
+                .files(List.of(controllerFile, metadataFile))
+                .build(), Map.of());
+
+        Field edges = model.getClass().getDeclaredField("edges");
+        edges.setAccessible(true);
+        List<?> edgeList = (List<?>) edges.get(model);
+
+        assertThat(edgeList).noneMatch(edge -> invokeDeclared(edge, "type").equals("CONTAINS"));
+        assertThat(edgeList).anyMatch(edge -> String.valueOf(invokeDeclared(edge, "source")).contains("AuthController")
+                && String.valueOf(invokeDeclared(edge, "target")).contains("AuthService"));
+    }
+
+    @Test
+    void externalDependenciesIncludeRuntimeBackendsAndAiProviders() throws Exception {
+        DependencyGraphAnalysisService service = new DependencyGraphAnalysisService(null, null, Runnable::run);
+        Method detectExternal = DependencyGraphAnalysisService.class.getDeclaredMethod("detectExternal", List.class);
+        detectExternal.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Map<String, DependencyGraphAnalysisService.External> externals = (Map<String, DependencyGraphAnalysisService.External>) detectExternal.invoke(service, List.of(
+                new com.codesense.repository.model.RepositoryFile() {{
+                    setFilePath("pom.xml");
+                    setContent("<project><dependencies><dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency></dependencies></project>");
+                }},
+                new com.codesense.repository.model.RepositoryFile() {{
+                    setFilePath("docker-compose.yml");
+                    setContent("services:\n  postgres:\n    image: postgres:16\n  redis:\n    image: redis:7\n");
+                }},
+                new com.codesense.repository.model.RepositoryFile() {{
+                    setFilePath("ai.py");
+                    setContent("client = GeminiClient(api_key=os.getenv('GEMINI_API_KEY'))");
+                }}
+        ));
+
+        assertThat(externals.values()).extracting(DependencyGraphAnalysisService.External::name)
+                .contains("Spring Boot", "PostgreSQL", "AI Provider");
+    }
+
     private static ParsedFileDTO fileWithSymbol(String path, String symbol) {
         return ParsedFileDTO.builder().filePath(path)
                 .elements(List.of(CodeElementDTO.builder().name(symbol).type("FUNCTION").build()))

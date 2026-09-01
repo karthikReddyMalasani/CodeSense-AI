@@ -36,32 +36,21 @@ public class DependencyGraphAnalysisService {
     private Model buildModel(ParsedRepositoryDTO parsed, Map<String, External> external) {
         Model model = new Model();
         String repositoryKey = parsed != null && parsed.getRepositoryId() != null ? parsed.getRepositoryId() + ":" : "";
-        Map<String, String> canonicalPaths = new HashMap<>();
 
         for (ParsedFileDTO file : parsed == null || parsed.getFiles() == null ? List.<ParsedFileDTO>of() : parsed.getFiles()) {
-            String normalizedPath = normalizeRepositoryPath(file == null ? null : file.getFilePath());
-            if (normalizedPath == null || normalizedPath.isBlank()) continue;
-            String canonicalPathKey = normalizedPath.toLowerCase(Locale.ROOT);
-            String canonicalFileId = repositoryKey + normalizedPath;
-            canonicalPaths.putIfAbsent(canonicalPathKey, canonicalFileId);
+            if (file == null) continue;
+            String normalizedPath = normalizeRepositoryPath(file.getFilePath());
+            if (normalizedPath == null || normalizedPath.isBlank() || !isSemanticFile(normalizedPath)) continue;
 
             String moduleName = inferModule(normalizedPath);
-            String moduleId = repositoryKey + "module:" + moduleName;
-            model.addNode(new Node(moduleId, moduleName, "MODULE", moduleName, file.getLanguage(), normalizedPath, false));
-
-            model.addNode(new Node(canonicalFileId, displayFileName(normalizedPath), "FILE", moduleName, file.getLanguage(), normalizedPath, false));
-            model.addEdge(new Edge(moduleId, canonicalFileId, "CONTAINS", "CONFIRMED"));
-
             if (file.getElements() != null) {
                 for (var element : file.getElements()) {
                     if (element == null || element.getName() == null || element.getName().isBlank()) continue;
                     String symbol = normalizeSymbolName(element.getName());
                     if (symbol == null || symbol.isBlank() || isLowLevelNoise(symbol)) continue;
                     String type = classifyElementType(element.getType(), element.getName(), normalizedPath);
-                    String classId = repositoryKey + normalizedPath + "#" + symbol;
-                    model.addNode(new Node(classId, symbol, type, moduleName, file.getLanguage(), normalizedPath, false));
-                    model.addEdge(new Edge(canonicalFileId, classId, "CONTAINS", "CONFIRMED"));
-                    model.addEdge(new Edge(moduleId, classId, "CONTAINS", "CONFIRMED"));
+                    String nodeId = repositoryKey + moduleName + "#" + normalizedPath + "#" + symbol;
+                    model.addNode(new Node(nodeId, symbol, type, moduleName, file.getLanguage(), normalizedPath, false));
                 }
             }
 
@@ -73,26 +62,21 @@ public class DependencyGraphAnalysisService {
                     if (source == null || target == null || source.isBlank() || target.isBlank()) continue;
                     if (isLowLevelNoise(source) || isLowLevelNoise(target)) continue;
 
-                    String sourceId = resolveNodeId(model, normalizedPath, source, repositoryKey);
-                    String targetId = resolveNodeId(model, normalizedPath, target, repositoryKey);
+                    String sourceId = resolveNodeId(model, normalizedPath, source, moduleName, repositoryKey);
+                    String targetId = resolveNodeId(model, normalizedPath, target, moduleName, repositoryKey);
                     if (sourceId == null || targetId == null) {
-                        sourceId = repositoryKey + normalizedPath + "#" + source;
-                        targetId = repositoryKey + normalizedPath + "#" + target;
+                        sourceId = repositoryKey + moduleName + "#" + normalizedPath + "#" + source;
+                        targetId = repositoryKey + moduleName + "#" + normalizedPath + "#" + target;
                     }
 
                     String relationshipType = classifyRelationshipType(relation.getRelationshipType(), source, target);
                     if (sourceId.equals(targetId)) continue;
-                    model.addNode(new Node(sourceId, source, "CLASS", moduleName, file.getLanguage(), normalizedPath, false));
-                    model.addNode(new Node(targetId, target, "CLASS", moduleName, file.getLanguage(), normalizedPath, false));
-                    model.addEdge(new Edge(sourceId, targetId, relationshipType, "CONFIRMED"));
 
-                    String sourceModule = inferModule(normalizedPath);
-                    String targetModule = inferModule(normalizedPath);
-                    String sourceModuleId = repositoryKey + "module:" + sourceModule;
-                    String targetModuleId = repositoryKey + "module:" + targetModule;
-                    if (!sourceModuleId.equals(targetModuleId)) {
-                        model.addEdge(new Edge(sourceModuleId, targetModuleId, "DEPENDS_ON", "AGGREGATED"));
-                    }
+                    String sourceLabel = source;
+                    String targetLabel = target;
+                    model.addNode(new Node(sourceId, sourceLabel, "CLASS", moduleName, file.getLanguage(), normalizedPath, false));
+                    model.addNode(new Node(targetId, targetLabel, "CLASS", moduleName, file.getLanguage(), normalizedPath, false));
+                    model.addEdge(new Edge(sourceId, targetId, relationshipType, "CONFIRMED"));
                 }
             }
         }
@@ -101,7 +85,7 @@ public class DependencyGraphAnalysisService {
         return model;
     }
 
-    private String resolveNodeId(Model model, String filePath, String symbol, String repositoryKey) {
+    private String resolveNodeId(Model model, String filePath, String symbol, String moduleName, String repositoryKey) {
         String normalizedSymbol = normalizeSymbolName(symbol);
         if (normalizedSymbol == null || normalizedSymbol.isBlank()) return null;
 
@@ -116,7 +100,30 @@ public class DependencyGraphAnalysisService {
             .toList();
         if (globalMatches.size() == 1) return globalMatches.get(0).id();
 
-        return repositoryKey + filePath + "#" + normalizedSymbol;
+        return repositoryKey + moduleName + "#" + filePath + "#" + normalizedSymbol;
+    }
+
+    private boolean isSemanticFile(String filePath) {
+        if (filePath == null || filePath.isBlank()) return false;
+        String normalized = filePath.replace('\\', '/').toLowerCase(Locale.ROOT);
+        String name = normalized.substring(normalized.lastIndexOf('/') + 1);
+        Set<String> excludedNames = Set.of(
+            ".gitignore", ".gitattributes", ".editorconfig", ".project", ".classpath",
+            "readme.md", "readme.txt", "dockerfile", "docker-compose.yml", "docker-compose.yaml",
+            "package-lock.json", "pom.xml", "build.gradle", "settings.gradle", "gradlew",
+            "mvnw", "mvnw.cmd", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml",
+            "vercel.json", "nginx.conf", "application.yml", "application-dev.yml", "application-prod.yml",
+            "requirements.txt", "pyproject.toml", "tsconfig.json", "vite.config.js", "vite.config.ts"
+        );
+        if (excludedNames.contains(name) || normalized.contains("/.git/") || normalized.contains("/node_modules/")) {
+            return false;
+        }
+        return normalized.endsWith(".java") || normalized.endsWith(".kt") || normalized.endsWith(".js")
+            || normalized.endsWith(".jsx") || normalized.endsWith(".ts") || normalized.endsWith(".tsx")
+            || normalized.endsWith(".py") || normalized.endsWith(".go") || normalized.endsWith(".cs")
+            || normalized.endsWith(".rb") || normalized.endsWith(".php") || normalized.endsWith(".rs")
+            || normalized.endsWith(".cpp") || normalized.endsWith(".c") || normalized.endsWith(".h")
+            || normalized.endsWith(".scala");
     }
 
     private String normalizeRepositoryPath(String value) {
@@ -203,7 +210,8 @@ public class DependencyGraphAnalysisService {
             "optional", "string", "integer", "long", "boolean", "double", "float",
             "object", "ioexception", "runtimeexception", "exception", "illegalargumentexception",
             "nullpointerexception", "logger", "console", "tostring", "stream", "filter",
-            "collect", "log", "info", "warn", "error", "json", "responseentity", "modelmapper"
+            "collect", "log", "info", "warn", "error", "json", "responseentity", "modelmapper",
+            "readme", "gitignore", "dockerfile", "nginx", "application", "pom", "package"
         );
         if (noise.contains(lower)) return true;
         return lower.startsWith("java.") || lower.startsWith("javax.") || lower.startsWith("org.") || lower.startsWith("com.") || lower.startsWith("net.") || lower.startsWith("spring.") || lower.startsWith("jakarta.");
@@ -212,11 +220,26 @@ public class DependencyGraphAnalysisService {
     private Map<String, External> detectExternal(List<RepositoryFile> files) {
         Map<String, External> result = new LinkedHashMap<>();
         for (RepositoryFile file : files) {
+            if (file == null) continue;
             String path = file.getFilePath() == null ? "" : file.getFilePath().toLowerCase(Locale.ROOT);
             String content = file.getContent() == null ? "" : file.getContent();
+            String contentLower = content.toLowerCase(Locale.ROOT);
             if (path.endsWith("package.json")) addManifest(result, content, "npm", "EXTERNAL");
             else if (path.endsWith("pom.xml")) addManifest(result, content, "Maven", "EXTERNAL");
             else if (path.endsWith("requirements.txt")) addManifest(result, content, "pip", "EXTERNAL");
+            else if (path.endsWith("docker-compose.yml") || path.endsWith("docker-compose.yaml") || path.contains("docker")) {
+                if (contentLower.contains("postgres") || contentLower.contains("postgresql")) result.putIfAbsent("PostgreSQL", new External("PostgreSQL", "Detected in Docker config", "Docker", "DATABASE"));
+                if (contentLower.contains("redis")) result.putIfAbsent("Redis", new External("Redis", "Detected in Docker config", "Docker", "DATABASE"));
+            }
+            if (contentLower.contains("gemini") || contentLower.contains("openai") || contentLower.contains("groq")) {
+                result.putIfAbsent("AI Provider", new External("AI Provider", "Detected in source configuration", "SDK", "AI_PROVIDER"));
+            }
+            if (contentLower.contains("spring-boot") || contentLower.contains("springframework")) {
+                result.putIfAbsent("Spring Boot", new External("Spring Boot", "Detected in Java dependency config", "Maven", "FRAMEWORK"));
+            }
+            if (contentLower.contains("react") && (path.endsWith("package.json") || path.endsWith(".jsx") || path.endsWith(".tsx"))) {
+                result.putIfAbsent("React", new External("React", "Detected in frontend source", "npm", "FRAMEWORK"));
+            }
         }
         return result;
     }
@@ -301,8 +324,9 @@ public class DependencyGraphAnalysisService {
         void pruneNoise() {
             List<Edge> filtered = edges.stream()
                 .filter(edge -> edge.type() != null)
-                .filter(edge -> !edge.type().equals("IMPORTS") || edge.source().contains("module:") || edge.target().contains("module:"))
-                .filter(edge -> !edge.source().contains("#") || !edge.target().contains("#") || !edge.source().contains("module:"))
+                .filter(edge -> !edge.type().equals("CONTAINS"))
+                .filter(edge -> edge.source() != null && edge.target() != null)
+                .filter(edge -> !edge.source().equals(edge.target()))
                 .toList();
             edges.clear();
             edges.addAll(filtered);

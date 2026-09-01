@@ -485,16 +485,51 @@ public class AiService {
             } else if (!classPrefix.isBlank() && path.startsWith("/")) {
                 path = classPrefix + path;
             }
-            routeMetadata.put(methodName, annotation + ":" + path);
+            routeMetadata.put(methodName, determineHttpMethod(annotation, args) + ":" + path);
         }
 
         return routeMetadata;
     }
 
+    private String determineHttpMethod(String annotation, String args) {
+        String annotationName = annotation == null ? "" : annotation.trim();
+        String methodValue = extractRequestMethodValue(args);
+        if (methodValue != null && !methodValue.isBlank()) {
+            return methodValue.toUpperCase();
+        }
+
+        if (annotationName.isBlank()) return "ALL";
+        if (annotationName.equalsIgnoreCase("RequestMapping")) return "ALL";
+        return annotationName.replace("Mapping", "").toUpperCase();
+    }
+
+    private String extractRequestMethodValue(String args) {
+        if (args == null || args.isBlank()) return null;
+
+        Matcher matcher = Pattern.compile("RequestMethod\\.(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)")
+            .matcher(args);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        Matcher multiMatcher = Pattern.compile("\\{\\s*(RequestMethod\\.(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)(?:\\s*,\\s*RequestMethod\\.(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD))*)\\s*\\}")
+            .matcher(args);
+        if (multiMatcher.find()) {
+            String matched = multiMatcher.group(1);
+            Matcher singleMatcher = Pattern.compile("RequestMethod\\.(GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)")
+                .matcher(matched);
+            if (singleMatcher.find()) {
+                return singleMatcher.group(1);
+            }
+        }
+
+        return null;
+    }
+
     private String inferHttpMethod(String methodName, List<String> annotations, Map<String, String> routeMetadata) {
         String routeInfo = routeMetadata.get(methodName);
         if (routeInfo != null && !routeInfo.isBlank()) {
-            return routeInfo.split(":", 2)[0].replace("Mapping", "").toUpperCase();
+            return routeInfo.split(":", 2)[0].toUpperCase();
         }
 
         for (String a : annotations) {

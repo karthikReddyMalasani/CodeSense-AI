@@ -197,4 +197,55 @@ class AiServiceTest {
         assertThat(resp.getContent()).contains("POST").contains("DELETE").contains("GET");
         assertThat(resp.getContent()).doesNotContain("| `GET` | `/register` |");
     }
+
+    @Test
+    void generateApiDocs_whenRequestMappingUsesExplicitHttpMethod_usesActualHttpMethod() {
+        Project project = new Project();
+        project.setId(projectId);
+        mockRepo.setProject(project);
+        mockRepo.setPrimaryLanguage("Java");
+
+        RepositoryFile authFile = RepositoryFile.builder()
+            .filePath("src/main/java/com/example/AuthController.java")
+            .fileName("AuthController.java")
+            .language("Java")
+            .content("""
+                @RestController
+                @RequestMapping("/api/auth")
+                public class AuthController {
+                    @RequestMapping(value = "/login", method = RequestMethod.POST)
+                    public String login() { return "ok"; }
+
+                    @RequestMapping(value = "/logout", method = RequestMethod.DELETE)
+                    public String logout() { return "ok"; }
+                }
+                """)
+            .build();
+
+        when(repositoryRepo.findById(repositoryId)).thenReturn(Optional.of(mockRepo));
+        when(repositoryRepo.findByIdAndProjectId(repositoryId, projectId)).thenReturn(Optional.of(mockRepo));
+        when(repositoryFileRepository.findByRepositoryIdAndIgnoredFalse(repositoryId)).thenReturn(List.of(authFile));
+        when(parserRouter.parse(anyString(), anyString(), anyString())).thenAnswer(invocation -> {
+            String filePath = invocation.getArgument(0);
+            String content = invocation.getArgument(1);
+            String language = invocation.getArgument(2);
+            List<CodeElement> elements = new ArrayList<>();
+            elements.add(CodeElement.builder().name("login").type(CodeElement.ElementType.METHOD).annotations(List.of()).build());
+            elements.add(CodeElement.builder().name("logout").type(CodeElement.ElementType.METHOD).annotations(List.of()).build());
+            return ParsedFile.builder().filePath(filePath).language(language).content(content).elements(elements).relationships(List.of()).build();
+        });
+
+        when(llmService.generate(any())).thenReturn(LLMResponse.builder().success(false).errorMessage("timeout").build());
+        when(documentationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        GenerateApiDocsRequestDto req = new GenerateApiDocsRequestDto();
+        req.setProjectId(projectId);
+        req.setRepositoryId(repositoryId);
+
+        GenerateApiDocsResponseDto resp = aiService.generateApiDocs("user@test.com", req);
+
+        assertThat(resp.getContent()).contains("| `POST` | `/api/auth/login` |");
+        assertThat(resp.getContent()).contains("| `DELETE` | `/api/auth/logout` |");
+        assertThat(resp.getContent()).doesNotContain("UNKNOWN");
+    }
 }

@@ -42,8 +42,7 @@ public class DependencyAnalysisService {
         }
 
         for (ParsedFile file : parsedFiles) {
-            if (file == null) continue;
-            addFileNode(nodes, graph, file.getFilePath());
+            if (file == null || !isSemanticFile(file.getFilePath())) continue;
             addTopLevelElementNodes(nodes, graph, file.getElements());
             addRelationshipEdges(nodes, graph, edges, seenEdges, file.getRelationships());
         }
@@ -67,10 +66,23 @@ public class DependencyAnalysisService {
             .build();
     }
 
-    private void addFileNode(Set<String> nodes, Graph<String, DefaultEdge> graph, String filePath) {
-        if (filePath == null || filePath.isBlank()) return;
-        nodes.add(filePath);
-        graph.addVertex(filePath);
+    private boolean isSemanticFile(String filePath) {
+        if (filePath == null || filePath.isBlank()) return false;
+        String normalized = filePath.replace('\\', '/').toLowerCase(Locale.ROOT);
+        String name = normalized.substring(normalized.lastIndexOf('/') + 1);
+        Set<String> excludedNames = Set.of(
+            ".gitignore", ".gitattributes", ".editorconfig", ".project", ".classpath",
+            "readme.md", "readme.txt", "dockerfile", "docker-compose.yml", "docker-compose.yaml",
+            "package-lock.json", "pom.xml", "build.gradle", "settings.gradle", "gradlew",
+            "mvnw", "mvnw.cmd", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml",
+            "vercel.json", "nginx.conf", "application.yml", "application-dev.yml", "application-prod.yml",
+            "requirements.txt", "pyproject.toml", "tsconfig.json", "vite.config.js", "vite.config.ts"
+        );
+        if (excludedNames.contains(name) || normalized.contains("/.git/") || normalized.contains("/node_modules/")) {
+            return false;
+        }
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        return lower.endsWith(".java") || lower.endsWith(".kt") || lower.endsWith(".js") || lower.endsWith(".jsx") || lower.endsWith(".ts") || lower.endsWith(".tsx") || lower.endsWith(".py") || lower.endsWith(".go") || lower.endsWith(".cs") || lower.endsWith(".rb") || lower.endsWith(".php") || lower.endsWith(".rs") || lower.endsWith(".cpp") || lower.endsWith(".c") || lower.endsWith(".h") || lower.endsWith(".scala");
     }
 
     private void addTopLevelElementNodes(Set<String> nodes, Graph<String, DefaultEdge> graph, List<CodeElement> fileElements) {
@@ -79,8 +91,10 @@ public class DependencyAnalysisService {
             if (element == null || !isTopLevelElement(element)) continue;
             String nodeName = element.getName();
             if (nodeName == null || nodeName.isBlank()) continue;
-            nodes.add(nodeName);
-            if (!graph.containsVertex(nodeName)) graph.addVertex(nodeName);
+            String normalized = normalizeDependencyNodeName(nodeName);
+            if (normalized == null || normalized.isBlank()) continue;
+            nodes.add(normalized);
+            if (!graph.containsVertex(normalized)) graph.addVertex(normalized);
         }
     }
 
@@ -91,16 +105,21 @@ public class DependencyAnalysisService {
 
         for (CodeRelationship rel : fileRelationships) {
             if (rel == null) continue;
-            String src = rel.getSourceElement();
-            String tgt = rel.getTargetElement();
-            if (src == null || src.isBlank() || tgt == null || tgt.isBlank()) continue;
+            String src = normalizeDependencyNodeName(rel.getSourceElement());
+            String tgt = normalizeDependencyNodeName(rel.getTargetElement());
+            if (src == null || src.isBlank() || tgt == null || tgt.isBlank() || src.equals(tgt)) continue;
+
+            String relationshipType = rel.getType() != null ? rel.getType().name() : "DEPENDS_ON";
+            if (relationshipType.equals("IMPORTS") && (src.toLowerCase(Locale.ROOT).contains("module") || tgt.toLowerCase(Locale.ROOT).contains("module"))) {
+                continue;
+            }
 
             nodes.add(src);
             nodes.add(tgt);
             if (!graph.containsVertex(src)) graph.addVertex(src);
             if (!graph.containsVertex(tgt)) graph.addVertex(tgt);
 
-            String edgeKey = src + "->" + tgt + "::" + (rel.getType() != null ? rel.getType().name() : "DEPENDS_ON");
+            String edgeKey = src + "->" + tgt + "::" + relationshipType;
             if (seenEdges.contains(edgeKey)) continue;
 
             try {
@@ -109,7 +128,7 @@ public class DependencyAnalysisService {
                     edges.add(DependencyEdge.builder()
                         .source(src)
                         .target(tgt)
-                        .type(rel.getType() != null ? rel.getType().name() : "DEPENDS_ON")
+                        .type(relationshipType)
                         .build());
                     seenEdges.add(edgeKey);
                 }
@@ -235,6 +254,16 @@ public class DependencyAnalysisService {
             || element.getType() == CodeElement.ElementType.INTERFACE
             || element.getType() == CodeElement.ElementType.ENUM
             || element.getType() == CodeElement.ElementType.MODULE;
+    }
+
+    private String normalizeDependencyNodeName(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        if (trimmed.isBlank()) return null;
+        String withoutPackage = trimmed.contains(".") ? trimmed.substring(trimmed.lastIndexOf('.') + 1) : trimmed;
+        withoutPackage = withoutPackage.replaceAll("[\\s\t\r\n]+", "");
+        String cleaned = withoutPackage.replaceAll("[^A-Za-z0-9_]", "_");
+        return cleaned.isBlank() ? null : cleaned;
     }
 
     private String sanitizeMermaid(String name) {
