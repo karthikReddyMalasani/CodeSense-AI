@@ -185,25 +185,46 @@ public class DatabaseDesignGenerator {
         StringBuilder sb = new StringBuilder("erDiagram\n");
 
         for (DatabaseTable table : tables.stream().limit(15).collect(Collectors.toList())) {
-            sb.append("  ").append(table.getTableName().toUpperCase()).append(" {\n");
+            String tableName = mermaidIdentifier(table.getTableName());
+            sb.append("  ").append(tableName).append(" {\n");
             for (TableColumn col : table.getColumns().stream().limit(8).collect(Collectors.toList())) {
-                String type = col.getType();
+                String type = mermaidType(col.getType());
                 String marker = Boolean.TRUE.equals(col.getIsPrimaryKey()) ? " PK"
                         : Boolean.TRUE.equals(col.getIsForeignKey()) ? " FK" : "";
-                sb.append("    ").append(type).append(" ").append(col.getColumnName()).append(marker).append("\n");
+                sb.append("    ").append(type).append(" ").append(mermaidIdentifier(col.getColumnName())).append(marker).append("\n");
             }
             sb.append("  }\n");
         }
 
         // Add relationships
         for (TableRelationship rel : relationships) {
-            String relationshipType = rel.getType() == null ? "" : rel.getType().toLowerCase(Locale.ROOT);
-            String notation = "one-to-many".equals(relationshipType) ? "||--o{" : "||--|";
-            sb.append("  ").append(rel.getFromTable().toUpperCase()).append(" ")
-                    .append(notation).append(" ").append(rel.getToTable().toUpperCase()).append(" : \"\"\n");
+            String relationshipType = rel.getType() == null ? "" : rel.getType().toLowerCase(Locale.ROOT).replace('_', '-');
+            String notation = switch (relationshipType) {
+                case "one-to-many" -> "||--o{";
+                case "many-to-one" -> "}o--||";
+                case "one-to-one" -> "||--||";
+                case "many-to-many" -> "}o--o{";
+                default -> null;
+            };
+            if (notation != null) {
+                sb.append("  ").append(mermaidIdentifier(rel.getFromTable())).append(" ")
+                        .append(notation).append(" ").append(mermaidIdentifier(rel.getToTable())).append(" : contains\n");
+            }
         }
 
         return sb.toString();
+    }
+
+    private String mermaidIdentifier(String value) {
+        String identifier = value == null ? "Entity" : value.replaceAll("[^A-Za-z0-9_]", "_").toUpperCase(Locale.ROOT);
+        if (identifier.isBlank()) identifier = "Entity";
+        if (Character.isDigit(identifier.charAt(0))) identifier = "ENTITY_" + identifier;
+        return identifier;
+    }
+
+    private String mermaidType(String value) {
+        String type = value == null ? "STRING" : value.replaceAll("[^A-Za-z0-9_]", "").toUpperCase(Locale.ROOT);
+        return type.isBlank() ? "STRING" : type;
     }
 
     private String detectDatabaseType(ParsedRepositoryDTO parsed) {

@@ -3,6 +3,7 @@ import { AlertCircle, Check, Circle, Layers, Loader2, RefreshCw, ShieldCheck, X 
 import { useParams } from 'react-router-dom';
 import { repositoryApi, parserApi } from '../services/api';
 import ProjectSubNav from '../components/common/ProjectSubNav';
+import DiagramRenderer from '../components/common/DiagramRenderer';
 
 const STAGES = ['Reading project structure', 'Scanning source files', 'Identifying application entry points', 'Detecting frameworks and technologies', 'Analyzing dependencies', 'Analyzing frontend architecture', 'Analyzing backend architecture', 'Analyzing API endpoints', 'Tracing frontend to backend communication', 'Analyzing services and business logic', 'Analyzing database/entities/repositories', 'Analyzing authentication and authorization', 'Detecting external APIs and third-party services', 'Analyzing file/data processing', 'Analyzing deployment and infrastructure configuration', 'Building component relationships', 'Understanding end-to-end application workflow', 'Designing system architecture', 'Generating architecture diagram', 'Finalizing architecture report'];
 
@@ -33,7 +34,7 @@ function MermaidDiagram({ title, diagram, caption }) {
         </button>
       </div>
       <div className={`mermaid-shell ${expanded ? 'expanded' : ''}`}>
-        <pre className="mermaid-pre">{diagram}</pre>
+        <DiagramRenderer title={title} source={diagram} />
       </div>
       {caption && <p className="diagram-caption">{caption}</p>}
     </div>

@@ -350,15 +350,15 @@ public class HighLevelDesignGenerator {
 
         // Add component nodes
         for (String comp : components) {
-            String id = comp.replace(" ", "").replace("/", "");
-            sb.append("  ").append(id).append("[\"").append(comp).append("\"]\n");
+            String id = mermaidIdentifier(comp);
+            sb.append("  ").append(id).append("[\"").append(escapeMermaidLabel(comp)).append("\"]\n");
         }
 
         // Add communications
         for (ComponentCommunication comm : comms) {
-            String fromId = comm.getFrom().replace(" ", "").replace("/", "");
-            String toId = comm.getTo().replace(" ", "").replace("/", "");
-            sb.append("  ").append(fromId).append(" -->|").append(comm.getProtocol()).append("| ").append(toId).append("\n");
+            String fromId = mermaidIdentifier(comm.getFrom());
+            String toId = mermaidIdentifier(comm.getTo());
+            sb.append("  ").append(fromId).append(" -->|").append(escapeMermaidLabel(comm.getProtocol())).append("| ").append(toId).append("\n");
         }
 
         return sb.toString();
@@ -381,6 +381,17 @@ public class HighLevelDesignGenerator {
             return "Containerized Application";
         }
         return "Modular Layered Architecture";
+    }
+
+    private String mermaidIdentifier(String value) {
+        String identifier = value == null ? "Component" : value.replaceAll("[^A-Za-z0-9_]", "");
+        if (identifier.isBlank()) identifier = "Component";
+        if (Character.isDigit(identifier.charAt(0))) identifier = "Component" + identifier;
+        return identifier;
+    }
+
+    private String escapeMermaidLabel(String value) {
+        return (value == null ? "" : value).replace("\\", "\\\\").replace("\"", "\\\"").replace("|", "/");
     }
 
     private List<ExternalSystem> detectExternalSystems(ParsedRepositoryDTO parsed) {

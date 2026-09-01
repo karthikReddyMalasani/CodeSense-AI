@@ -485,18 +485,31 @@ public class LowLevelDesignGenerator {
 
         List<ClassDesign> classes = generateClasses(parsed);
         List<ClassRelationship> rels = generateClassRelationships(parsed);
+        Map<String, String> identifiers = new LinkedHashMap<>();
+        Set<String> usedIdentifiers = new HashSet<>();
+
+        for (ClassDesign cls : classes.stream().limit(20).toList()) {
+            registerClassIdentifier(identifiers, usedIdentifiers, cls.getName());
+        }
+        for (ClassRelationship rel : rels.stream().limit(20).toList()) {
+            registerClassIdentifier(identifiers, usedIdentifiers, rel.getSourceClass());
+            registerClassIdentifier(identifiers, usedIdentifiers, rel.getTargetClass());
+        }
 
         // Add classes
         for (ClassDesign cls : classes.stream().limit(20).collect(Collectors.toList())) {
-            sb.append("  class ").append(cls.getName()).append(" {\n");
+            String className = classDisplayName(cls.getName());
+            String identifier = identifiers.get(className);
+            if (identifier == null) continue;
+            sb.append("  class \"").append(escapeMermaidLabel(className)).append("\" as ").append(identifier).append(" {\n");
             if (cls.getFields() != null) {
                 for (FieldDesign field : cls.getFields().stream().limit(5).collect(Collectors.toList())) {
-                    sb.append("    ").append(field.getType()).append(" ").append(field.getName()).append("\n");
+                    sb.append("    ").append(safeMemberType(field.getType())).append(" ").append(safeMemberName(field.getName())).append("\n");
                 }
             }
             if (cls.getMethods() != null) {
                 for (MethodDesign method : cls.getMethods().stream().limit(3).collect(Collectors.toList())) {
-                    sb.append("    ").append(method.getReturnType()).append(" ").append(method.getName()).append("()\n");
+                    sb.append("    +").append(safeMemberName(method.getName())).append("()\n");
                 }
             }
             sb.append("  }\n");
@@ -505,18 +518,57 @@ public class LowLevelDesignGenerator {
         // Add relationships
         Set<String> seen = new HashSet<>();
         for (ClassRelationship rel : rels.stream().limit(20).collect(Collectors.toList())) {
-            String key = rel.getSourceClass() + rel.getType() + rel.getTargetClass();
+            String source = identifiers.get(classDisplayName(rel.getSourceClass()));
+            String target = identifiers.get(classDisplayName(rel.getTargetClass()));
+            if (source == null || target == null || source.equals(target)) continue;
+            String key = source + rel.getType() + target;
             if (seen.add(key)) {
-                String arrow = switch (rel.getType()) {
+                String relationshipType = rel.getType() == null ? "" : rel.getType();
+                String arrow = switch (relationshipType) {
                     case "EXTENDS" -> "<|--";
                     case "IMPLEMENTS" -> "<|..";
                     case "USES", "DEPENDS_ON" -> "-->";
                     default -> "-->";
                 };
-                sb.append("  ").append(rel.getSourceClass()).append(" ").append(arrow).append(" ").append(rel.getTargetClass()).append("\n");
+                sb.append("  ").append(source).append(" ").append(arrow).append(" ").append(target).append("\n");
             }
         }
 
         return sb.toString();
+    }
+
+    private void registerClassIdentifier(Map<String, String> identifiers, Set<String> usedIdentifiers, String value) {
+        String displayName = classDisplayName(value);
+        if (displayName.isBlank() || identifiers.containsKey(displayName)) return;
+        String base = safeMemberName(displayName);
+        String identifier = base;
+        int suffix = 2;
+        while (!usedIdentifiers.add(identifier)) identifier = base + suffix++;
+        identifiers.put(displayName, identifier);
+    }
+
+    private String classDisplayName(String value) {
+        if (value == null) return "";
+        String normalized = value.replace('\\', '/').replace('$', '.');
+        normalized = normalized.substring(normalized.lastIndexOf('/') + 1);
+        if (normalized.endsWith(".java")) normalized = normalized.substring(0, normalized.length() - 5);
+        int packageSeparator = normalized.lastIndexOf('.');
+        return packageSeparator >= 0 ? normalized.substring(packageSeparator + 1) : normalized;
+    }
+
+    private String safeMemberName(String value) {
+        String safe = value == null ? "Element" : value.replaceAll("[^A-Za-z0-9_]", "_");
+        if (safe.isBlank()) safe = "Element";
+        if (Character.isDigit(safe.charAt(0))) safe = "Element_" + safe;
+        return safe;
+    }
+
+    private String safeMemberType(String value) {
+        String type = value == null ? "Object" : value.replaceAll("[^A-Za-z0-9_<>\\[\\]]", "");
+        return type.isBlank() ? "Object" : type;
+    }
+
+    private String escapeMermaidLabel(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

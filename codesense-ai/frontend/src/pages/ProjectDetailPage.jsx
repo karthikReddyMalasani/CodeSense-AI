@@ -91,14 +91,33 @@ export default function ProjectDetailPage() {
   const handleImportGitHub = async (e) => {
     e.preventDefault();
     if (!githubForm.githubUrl) { setError('GitHub URL is required'); return; }
+    const requestedUrl = githubForm.githubUrl.trim();
     setUploading(true); setError(''); setInfoMsg('');
     try {
-      const res = await repositoryApi.importGitHub(projectId, githubForm);
+      const res = await repositoryApi.importGitHub(projectId, {
+        ...githubForm,
+        githubUrl: requestedUrl
+      });
       setRepositories([res.data.data, ...repositories]);
       setShowGitHub(false);
       setGithubForm({ githubUrl: '', name: '', branch: '' });
       setInfoMsg('GitHub repository import started! Cloning and scanning files...');
     } catch (err) {
+      try {
+        const latest = await repositoryApi.list(projectId);
+        const importedRepository = (latest.data.data || []).find(
+          repository => repository.githubUrl === requestedUrl && repository.status !== 'FAILED'
+        );
+        if (importedRepository) {
+          setRepositories(latest.data.data);
+          setShowGitHub(false);
+          setGithubForm({ githubUrl: '', name: '', branch: '' });
+          setInfoMsg('GitHub repository import started! Cloning and scanning files...');
+          return;
+        }
+      } catch {
+        // Preserve the original request error when reconciliation is unavailable.
+      }
       setError(err.response?.data?.message || 'Import failed');
     } finally {
       setUploading(false);
@@ -226,7 +245,7 @@ export default function ProjectDetailPage() {
           <div className="page-subtitle">{project.description || 'No description'}</div>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button className="btn btn-secondary" onClick={() => setShowGitHub(true)}>🐙 Import GitHub</button>
+          <button className="btn btn-secondary" onClick={() => { setError(''); setShowGitHub(true); }}>🐙 Import GitHub</button>
           <button className="btn btn-primary" onClick={() => setShowUpload(true)}>📦 Upload ZIP</button>
           <button
             className="btn btn-secondary"
