@@ -26,26 +26,55 @@ public class CodeMetricsService {
 
     /**
      * Calculate metrics for all files in the repository.
+     * Optimized for large repositories with error resilience and progress tracking.
      */
     public RepositoryMetricsSummary calculateRepositoryMetrics(UUID repositoryId) {
+        long startTime = System.currentTimeMillis();
         List<RepositoryFile> files = repositoryFileRepository.findByRepositoryIdAndIgnoredFalse(repositoryId);
+        
+        log.info("Starting metrics calculation for repository {} with {} total files", repositoryId, files.size());
 
         List<CodeMetrics> allMetrics = new ArrayList<>();
         Map<String, List<CodeMetrics>> byLanguage = new HashMap<>();
+        int skipped = 0;
+        int failed = 0;
+        int processed = 0;
 
         for (RepositoryFile file : files) {
-            if (file.isBinary() || file.getContent() == null) continue;
+            // Skip binary files and empty content
+            if (file.isBinary() || file.getContent() == null || file.getContent().isBlank()) {
+                skipped++;
+                continue;
+            }
+            
             try {
+                // Skip very small files (likely not worth analyzing)
+                if (file.getContent().length() < 10) {
+                    skipped++;
+                    continue;
+                }
+                
                 CodeMetrics metrics = parserRouter.calculateMetrics(
                     file.getFilePath(), file.getContent(), file.getLanguage());
                 allMetrics.add(metrics);
 
                 String lang = file.getLanguage() != null ? file.getLanguage() : "Unknown";
                 byLanguage.computeIfAbsent(lang, k -> new ArrayList<>()).add(metrics);
+                processed++;
+                
+                // Log progress every 100 files for large repos
+                if (processed % 100 == 0) {
+                    log.debug("Metrics progress: {}/{} files processed", processed, files.size());
+                }
             } catch (Exception e) {
-                log.debug("Metrics failed for {}: {}", file.getFilePath(), e.getMessage());
+                failed++;
+                log.warn("Metrics calculation failed for file {}: {}", file.getFilePath(), e.getMessage());
             }
         }
+        
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("Metrics calculation completed for repository {} in {}ms: {} processed, {} skipped, {} failed", 
+            repositoryId, duration, processed, skipped, failed);
 
         return buildSummary(repositoryId, allMetrics, byLanguage, files.size());
     }

@@ -54,6 +54,15 @@ server:
   error:
     include-message: always
     include-binding-errors: always
+  tomcat:
+    # Increase timeouts for large repository processing and AI operations
+    connection-timeout: 300000  # 5 minutes for connection establishment
+    threads:
+      max: 100  # Allow more concurrent requests
+      min-spare: 10
+  servlet:
+    session:
+      timeout: 30m
 
 # ─── JWT ─────────────────────────────────────────────────────────────────────
 jwt:

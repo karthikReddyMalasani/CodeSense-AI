@@ -129,17 +129,17 @@ export const aiApi = {
 
 // Parser & Metrics API
 export const parserApi = {
-  parseRepository: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/parse`),
-  getMetrics: (repositoryId) => api.get(`/api/parser/repositories/${repositoryId}/metrics`),
+  parseRepository: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/parse`, {}, { timeout: 180000 }),
+  getMetrics: (repositoryId) => api.get(`/api/parser/repositories/${repositoryId}/metrics`, { timeout: 180000 }),
   // direction optional query param
   getDependencyGraph: (repositoryId, direction) => {
     const url = direction ? `/api/parser/repositories/${repositoryId}/dependency-graph?direction=${encodeURIComponent(direction)}` : `/api/parser/repositories/${repositoryId}/dependency-graph`;
-    return api.post(url);
+    return api.post(url, {}, { timeout: 180000 });
   },
-  startDependencyAnalysis: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/dependency-analysis`),
-  getDependencyAnalysis: (repositoryId, jobId) => api.get(`/api/parser/repositories/${repositoryId}/dependency-analysis/${jobId}`),
-  getUmlDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/uml`),
-  getArchitectureDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture`),
-  startArchitectureAnalysis: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture-analysis`),
-  getArchitectureAnalysis: (repositoryId, jobId) => api.get(`/api/parser/repositories/${repositoryId}/architecture-analysis/${jobId}`)
+  startDependencyAnalysis: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/dependency-analysis`, {}, { timeout: 180000 }),
+  getDependencyAnalysis: (repositoryId, jobId) => api.get(`/api/parser/repositories/${repositoryId}/dependency-analysis/${jobId}`, { timeout: 60000 }),
+  getUmlDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/uml`, {}, { timeout: 180000 }),
+  getArchitectureDiagrams: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture`, {}, { timeout: 180000 }),
+  startArchitectureAnalysis: (repositoryId) => api.post(`/api/parser/repositories/${repositoryId}/architecture-analysis`, {}, { timeout: 180000 }),
+  getArchitectureAnalysis: (repositoryId, jobId) => api.get(`/api/parser/repositories/${repositoryId}/architecture-analysis/${jobId}`, { timeout: 60000 })
 };
