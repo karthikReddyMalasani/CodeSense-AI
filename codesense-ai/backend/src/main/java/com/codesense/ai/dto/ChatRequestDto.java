@@ -12,8 +12,7 @@ public class ChatRequestDto {
     @NotNull private UUID projectId;
     @NotNull private UUID repositoryId;
     private UUID conversationId;
-    
-    @NotBlank(message = "Question cannot be blank")
+    @NotBlank
     @Size(min = 3, max = 5000, message = "Question must be between 3 and 5000 characters")
     private String question;
 }

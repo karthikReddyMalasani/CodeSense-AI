@@ -40,24 +40,91 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Retry logic with exponential backoff
+  const sendMessageWithRetry = async (questionText, maxRetries = 2) => {
+    let lastError;
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT')), 120000) // 120 second timeout
+        );
+        
+        const chatPromise = aiApi.chat({
+          projectId, repositoryId: selectedRepo.id, conversationId, question: questionText
+        });
+        
+        const res = await Promise.race([chatPromise, timeoutPromise]);
+        const data = res.data.data || res.data || {};
+        setConversationId(data.conversationId || conversationId);
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.answer || 'I could not generate a response for this question.',
+          sources: data.sources || []
+        }]);
+        return; // Success
+      } catch (err) {
+        lastError = err;
+        
+        // Don't retry for validation errors
+        if (err.response?.status === 400 || err.response?.status === 422) {
+          throw err;
+        }
+        
+        // Don't retry for the last attempt
+        if (attempt > maxRetries) {
+          throw err;
+        }
+        
+        // Show retry message
+        if (err.message === 'TIMEOUT') {
+          setMessages(prev => {
+            const msgs = [...prev];
+            msgs[msgs.length - 1] = {
+              ...msgs[msgs.length - 1],
+              content: `⏱️ Request timed out (attempt ${attempt}). Retrying...`
+            };
+            return msgs;
+          });
+        } else {
+          setMessages(prev => {
+            const msgs = [...prev];
+            msgs[msgs.length - 1] = {
+              ...msgs[msgs.length - 1],
+              content: `⚠️ Connection issue (attempt ${attempt}). Retrying...`
+            };
+            return msgs;
+          });
+        }
+        
+        // Exponential backoff: 1s, 2s, etc.
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+    throw lastError;
+  };
+
+  // Input validation
+  const validateQuestion = (q) => {
+    const trimmed = q.trim();
+    if (trimmed.length < 3) {
+      return { valid: false, message: 'Question must be at least 3 characters long' };
+    }
+    if (trimmed.length > 5000) {
+      return { valid: false, message: 'Question must not exceed 5000 characters' };
+    }
+    return { valid: true };
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || !selectedRepo || loading) return;
 
-    // Validate question length
-    const question = input.trim();
-    if (question.length < 3) {
+    // Validate input
+    const validation = validateQuestion(input);
+    if (!validation.valid) {
+      setStatusMessage(validation.message);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: '❌ Please ask a longer question (at least 3 characters).',
-        error: true
-      }]);
-      return;
-    }
-
-    if (question.length > 5000) {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '❌ Question is too long (max 5000 characters).',
+        content: validation.message,
         error: true
       }]);
       return;
@@ -74,81 +141,53 @@ export default function ChatPage() {
       return;
     }
 
+    const question = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: question }]);
     setLoading(true);
     setStatusMessage('');
+    setMessages(prev => [...prev, { role: 'assistant', content: '⏳ Processing your question...' }]);
 
-    const retryConfig = {
-      maxRetries: 2,
-      retryDelay: 1000,
-      timeout: 120000 // 2 minutes
-    };
-
-    let lastError = null;
-    for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), retryConfig.timeout);
-
-        const res = await aiApi.chat({
-          projectId, 
-          repositoryId: selectedRepo.id, 
-          conversationId, 
-          question
-        });
-        
-        clearTimeout(timeoutId);
-        
-        const data = res.data.data || res.data || {};
-        if (!data.answer) {
-          throw new Error('Empty response from server');
-        }
-        
-        setConversationId(data.conversationId || conversationId);
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: data.answer,
-          sources: data.sources || []
-        }]);
-        return; // Success
-      } catch (err) {
-        lastError = err;
-        const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
-        
-        if (attempt < retryConfig.maxRetries) {
-          // Show retry message
-          if (attempt === 0) {
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: `⏳ Request timed out or failed (${errorMsg}). Retrying...`,
-              error: true
-            }]);
-          }
-          await new Promise(resolve => setTimeout(resolve, retryConfig.retryDelay));
-        } else {
-          // Final error message
-          let friendlyMessage = errorMsg;
-          if (errorMsg.includes('timeout') || errorMsg.includes('aborted')) {
-            friendlyMessage = 'Request took too long. The question might be complex. Try a simpler question or try again in a moment.';
-          } else if (errorMsg.includes('ingestion') || errorMsg.includes('indexing')) {
-            friendlyMessage = 'Repository is still being indexed. Please wait a moment and try again.';
-          } else if (errorMsg.includes('not found') || errorMsg.includes('404')) {
-            friendlyMessage = 'Repository not found. Please try selecting a different repository.';
-          } else if (errorMsg.includes('API') || errorMsg.includes('LLM')) {
-            friendlyMessage = 'AI service is temporarily unavailable. Please try again in a moment.';
-          }
-          
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `❌ Error: ${friendlyMessage}`,
-            error: true
-          }]);
-        }
+    try {
+      await sendMessageWithRetry(question, 2); // 2 retries = 3 total attempts
+    } catch (err) {
+      let errorMessage = 'Sorry, I encountered an error processing your question.';
+      
+      if (err.message === 'TIMEOUT') {
+        errorMessage = '⏱️ Request timed out. The question might be complex and requires more analysis time. Please try a simpler question or check your connection.';
+      } else if (err.response?.status === 400 || err.response?.status === 422) {
+        errorMessage = err.response?.data?.message || 'Invalid question format. Please rephrase your question.';
+      } else if (err.response?.status === 503) {
+        errorMessage = '🔧 AI service is temporarily unavailable. Please try again in a moment.';
+      } else if (err.response?.status === 504) {
+        errorMessage = '⏳ The AI service is overloaded. Please try again in a few moments.';
+      } else if (err.response?.status === 401 || err.response?.status === 403) {
+        errorMessage = 'You do not have access to this repository. Please check your permissions.';
+      } else if (err.message === 'Network Error' || !err.response) {
+        errorMessage = '🌐 Network connection lost. Please check your internet connection and try again.';
       }
+      
+      setMessages(prev => {
+        const msgs = [...prev];
+        // Replace the "Processing..." message with error
+        if (msgs[msgs.length - 1].content === '⏳ Processing your question...') {
+          msgs[msgs.length - 1] = {
+            role: 'assistant',
+            content: errorMessage,
+            error: true
+          };
+        } else {
+          msgs.push({
+            role: 'assistant',
+            content: errorMessage,
+            error: true
+          });
+        }
+        return msgs;
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const handleKeyDown = (e) => {
@@ -280,14 +319,20 @@ export default function ChatPage() {
             {/* Input */}
             <div className="chat-input-area">
               <div className="chat-input-row">
-                <textarea className="chat-textarea" rows={1} placeholder="Ask a question about your repository..."
-                  value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} />
-                <button className="btn btn-primary" onClick={sendMessage} disabled={loading || !input.trim()}>
+                <textarea className="chat-textarea" rows={1} placeholder="Ask a question about your repository (3-5000 chars)..."
+                  value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} 
+                  disabled={loading || selectedRepo?.ingestionStatus !== 'COMPLETED'}
+                  maxLength={5000} />
+                <button className="btn btn-primary" onClick={sendMessage} 
+                  disabled={loading || !input.trim() || input.trim().length < 3 || selectedRepo?.ingestionStatus !== 'COMPLETED'}>
                   Send
                 </button>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                Press Enter to send · Shift+Enter for new line
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Press Enter to send · Shift+Enter for new line</span>
+                <span style={{ color: input.length > 4500 ? '#ff6b6b' : input.length > 3500 ? '#ffa940' : 'var(--text-muted)' }}>
+                  {input.length}/5000
+                </span>
               </div>
             </div>
           </div>
