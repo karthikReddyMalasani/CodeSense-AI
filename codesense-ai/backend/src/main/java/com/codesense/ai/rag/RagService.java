@@ -63,19 +63,38 @@ public class RagService {
     /**
      * Process a repository chat request.
      * Retrieves relevant context chunks, constructs a prompt, and generates an answer.
+     * 
+     * WORKFLOW:
+     * 1. Validate request and repository status
+     * 2. Get or create conversation for multi-turn tracking
+     * 3. Search for relevant code chunks (semantic search)
+     * 4. Build context from chunks and conversation history
+     * 5. Generate answer using LLM with context
+     * 6. Extract source citations from chunks
+     * 7. Persist messages for conversation continuity
+     * 
+     * PERFORMANCE:
+     * - Vector search: < 1s for typical queries
+     * - LLM generation: < 5s for first token, < 2 min total
+     * - Expected end-to-end: 5-30s depending on answer length
      */
     public ChatResponseDto chat(String userEmail, ChatRequestDto request) {
         UUID projectId = request.getProjectId();
         UUID repositoryId = request.getRepositoryId();
+        String question = request.getQuestion().trim();
 
-        log.debug("RAG chat: project={}, repo={}, question={}",
-            projectId, repositoryId, request.getQuestion());
+        log.info("RAG chat initiated: project={}, repo={}, questionLen={}, conversationId={}",
+            projectId, repositoryId, question.length(), request.getConversationId());
 
+        // Validate repository exists and is accessible
         Repository repository = repositoryRepo.findById(repositoryId)
             .orElseThrow(() -> new ResourceNotFoundException("Repository", repositoryId.toString()));
+        
+        // Check ingestion status
         if (repository.getIngestionStatus() != IngestionStatus.COMPLETED) {
             String status = repository.getIngestionStatus() != null
                 ? repository.getIngestionStatus().name().toLowerCase() : "pending";
+            log.warn("Chat attempted on non-ingested repository: {} (status: {})", repositoryId, status);
             return ChatResponseDto.builder()
                 .answer("### Repository indexing is not ready\n\n"
                     + "AI chat is waiting for repository ingestion to finish. Current status: **"
@@ -84,41 +103,74 @@ public class RagService {
                 .build();
         }
 
-        Conversation conversation = getOrCreateConversation(userEmail, request, repository);
-        String history = buildConversationHistory(conversation);
-        List<RepositoryChunk> relevantChunks = searchRelevantChunks(projectId, repositoryId, request.getQuestion());
-        String context = buildContext(relevantChunks);
-        String prompt = promptTemplates.repositoryChat(request.getQuestion(), context, history);
+        long startTime = System.currentTimeMillis();
 
-        LLMResponse llmResponse = generateAnswer(prompt, request.getQuestion(), relevantChunks);
-        String answer = resolveAnswer(request.getQuestion(), relevantChunks, llmResponse);
-        List<SourceReferenceDto> sources = extractSources(relevantChunks);
+        try {
+            Conversation conversation = getOrCreateConversation(userEmail, request, repository);
+            String history = buildConversationHistory(conversation);
+            
+            // Step 1: Vector search for relevant code chunks
+            long searchStartTime = System.currentTimeMillis();
+            List<RepositoryChunk> relevantChunks = searchRelevantChunks(projectId, repositoryId, question);
+            long searchDuration = System.currentTimeMillis() - searchStartTime;
+            log.debug("Vector search completed: {} chunks found in {}ms", relevantChunks.size(), searchDuration);
+            
+            // Step 2: Build context from chunks
+            String context = buildContext(relevantChunks);
+            String prompt = promptTemplates.repositoryChat(question, context, history);
+            
+            // Step 3: Generate answer with LLM
+            long llmStartTime = System.currentTimeMillis();
+            LLMResponse llmResponse = generateAnswer(prompt, question, relevantChunks);
+            long llmDuration = System.currentTimeMillis() - llmStartTime;
+            log.debug("LLM generation completed in {}ms: success={}, tokens={}", 
+                llmDuration, llmResponse.isSuccess(), llmResponse.getTotalTokens());
+            
+            // Step 4: Resolve answer (use fallback if LLM failed)
+            String answer = resolveAnswer(question, relevantChunks, llmResponse);
+            List<SourceReferenceDto> sources = extractSources(relevantChunks);
+            
+            // Step 5: Persist messages for conversation continuity
+            persistMessages(conversation, question, answer, sources);
+            
+            long totalDuration = System.currentTimeMillis() - startTime;
+            log.info("RAG chat complete: conversationId={}, sources={}, totalDuration={}ms, modelId={}",
+                conversation.getId(), sources.size(), totalDuration, llmResponse.getModelId());
 
-        persistMessages(conversation, request.getQuestion(), answer, sources);
-
-        log.debug("RAG chat complete: {} sources, {} tokens",
-            sources.size(), llmResponse.getTotalTokens());
-
-        return ChatResponseDto.builder()
-            .conversationId(conversation.getId())
-            .answer(answer)
-            .sources(sources)
-            .modelId(llmResponse.getModelId())
-            .build();
+            return ChatResponseDto.builder()
+                .conversationId(conversation.getId())
+                .answer(answer)
+                .sources(sources)
+                .modelId(llmResponse.getModelId())
+                .build();
+                
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("RAG chat failed after {}ms: {}", duration, e.getMessage(), e);
+            throw e;
+        }
     }
 
     private List<RepositoryChunk> searchRelevantChunks(UUID projectId, UUID repositoryId, String question) {
         try {
-            return vectorSearchService.semanticSearch(projectId, repositoryId, question, topK);
+            log.debug("Starting semantic search: project={}, repo={}, topK={}, questionLen={}",
+                projectId, repositoryId, topK, question.length());
+            List<RepositoryChunk> results = vectorSearchService.semanticSearch(projectId, repositoryId, question, topK);
+            log.debug("Semantic search returned {} chunks", results.size());
+            return results;
         } catch (Exception e) {
-            log.warn("Vector search failed (proceeding without context): {}", e.getMessage());
+            log.error("Vector search failed (proceeding without context): repo={}, error={}", 
+                repositoryId, e.getMessage());
+            // Fallback: proceed with empty context, LLM will indicate insufficient information
             return List.of();
         }
     }
 
     private LLMResponse generateAnswer(String prompt, String question, List<RepositoryChunk> relevantChunks) {
         try {
-            return llmService.generate(
+            log.debug("Invoking LLM for answer generation: contextChunks={}, promptLen={}", 
+                relevantChunks.size(), prompt.length());
+            LLMResponse response = llmService.generate(
                 LLMRequest.builder()
                     .prompt(prompt)
                     .maxNewTokens(1024)

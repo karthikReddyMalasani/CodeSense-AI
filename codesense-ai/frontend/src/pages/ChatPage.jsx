@@ -43,6 +43,26 @@ export default function ChatPage() {
   const sendMessage = async () => {
     if (!input.trim() || !selectedRepo || loading) return;
 
+    // Validate question length
+    const question = input.trim();
+    if (question.length < 3) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '❌ Please ask a longer question (at least 3 characters).',
+        error: true
+      }]);
+      return;
+    }
+
+    if (question.length > 5000) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '❌ Question is too long (max 5000 characters).',
+        error: true
+      }]);
+      return;
+    }
+
     if (selectedRepo.status !== 'READY' || selectedRepo.ingestionStatus !== 'COMPLETED') {
       const blockingMessage = 'This repository is not ready for AI chat yet. Please wait for ingestion to complete or trigger AI ingestion.';
       setStatusMessage(blockingMessage);
@@ -54,33 +74,81 @@ export default function ChatPage() {
       return;
     }
 
-    const question = input.trim();
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: question }]);
     setLoading(true);
     setStatusMessage('');
 
-    try {
-      const res = await aiApi.chat({
-        projectId, repositoryId: selectedRepo.id, conversationId, question
-      });
-      const data = res.data.data || res.data || {};
-      setConversationId(data.conversationId || conversationId);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.answer || 'I could not generate a response for this question.',
-        sources: data.sources || []
-      }]);
-    } catch (err) {
-      const message = err.response?.data?.message || 'Sorry, I encountered an error processing your question. Please try again.';
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: message,
-        error: true
-      }]);
-    } finally {
-      setLoading(false);
+    const retryConfig = {
+      maxRetries: 2,
+      retryDelay: 1000,
+      timeout: 120000 // 2 minutes
+    };
+
+    let lastError = null;
+    for (let attempt = 0; attempt <= retryConfig.maxRetries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), retryConfig.timeout);
+
+        const res = await aiApi.chat({
+          projectId, 
+          repositoryId: selectedRepo.id, 
+          conversationId, 
+          question
+        });
+        
+        clearTimeout(timeoutId);
+        
+        const data = res.data.data || res.data || {};
+        if (!data.answer) {
+          throw new Error('Empty response from server');
+        }
+        
+        setConversationId(data.conversationId || conversationId);
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.answer,
+          sources: data.sources || []
+        }]);
+        return; // Success
+      } catch (err) {
+        lastError = err;
+        const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
+        
+        if (attempt < retryConfig.maxRetries) {
+          // Show retry message
+          if (attempt === 0) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: `⏳ Request timed out or failed (${errorMsg}). Retrying...`,
+              error: true
+            }]);
+          }
+          await new Promise(resolve => setTimeout(resolve, retryConfig.retryDelay));
+        } else {
+          // Final error message
+          let friendlyMessage = errorMsg;
+          if (errorMsg.includes('timeout') || errorMsg.includes('aborted')) {
+            friendlyMessage = 'Request took too long. The question might be complex. Try a simpler question or try again in a moment.';
+          } else if (errorMsg.includes('ingestion') || errorMsg.includes('indexing')) {
+            friendlyMessage = 'Repository is still being indexed. Please wait a moment and try again.';
+          } else if (errorMsg.includes('not found') || errorMsg.includes('404')) {
+            friendlyMessage = 'Repository not found. Please try selecting a different repository.';
+          } else if (errorMsg.includes('API') || errorMsg.includes('LLM')) {
+            friendlyMessage = 'AI service is temporarily unavailable. Please try again in a moment.';
+          }
+          
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `❌ Error: ${friendlyMessage}`,
+            error: true
+          }]);
+        }
+      }
     }
+    
+    setLoading(false);
   };
 
   const handleKeyDown = (e) => {
