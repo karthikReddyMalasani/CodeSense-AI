@@ -155,10 +155,10 @@ export default function ChatPage() {
                   <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
                   <div style={{ fontWeight: '600', color: 'var(--text)' }}>Start a conversation</div>
                   <div style={{ fontSize: '13px', marginTop: '8px' }}>
-                    Ask about classes, methods, authentication, architecture, or anything in your repository.
+                    Ask any question about your repository — architecture, implementation, security, performance, or anything else.
                   </div>
                   <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {['How does authentication work?', 'Explain the main classes', 'What APIs are available?'].map(q => (
+                    {['How does authentication work?', 'Explain the system architecture', 'Where is input validated?'].map(q => (
                       <button key={q} className="btn btn-secondary btn-sm"
                         onClick={() => { setInput(q); }}>
                         {q}
