@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -25,21 +26,10 @@ export function AuthProvider({ children }) {
         window.location.search.includes('error='));
 
     const loadProfile = async () => {
-      let session;
-      try {
-        ({ data: { session } } = await supabase.auth.getSession());
-      } catch (error) {
-        localStorage.removeItem('token');
-        if (mounted) {
-          setToken(null);
-          setUser(null);
-          setLoading(false);
-        }
-        console.error('Unable to restore the CodeSense session:', error);
-        return;
-      }
-      if (session?.user && !localStorage.getItem('token')) {
+      if (!token && isOAuthSuccessCallback && !isOAuthErrorCallback) {
         try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user) throw new Error('OAuth callback did not include a user session.');
           await exchangeSession(session);
           if (mounted) navigate('/dashboard', { replace: true });
         } catch (error) {
@@ -49,14 +39,8 @@ export function AuthProvider({ children }) {
         return;
       }
       if (!token) {
-        // If an OAuth success callback is in the URL, keep loading true so the session
-        // can finish exchanging before the app route guard redirects to /login.
         if (mounted) {
-          if (isOAuthSuccessCallback && !isOAuthErrorCallback) {
-            setLoading(true);
-          } else {
-            setLoading(false);
-          }
+          setLoading(false);
         }
         return;
       }
@@ -125,9 +109,10 @@ export function AuthProvider({ children }) {
         session.user.email.split('@')[0];
 
       const res = await authApi.socialLogin({
-        provider: 'supabase',
+        provider: session.user.app_metadata?.provider || 'google',
         email: session.user.email,
-        name: displayName
+        name: displayName,
+        accessToken: session.access_token
       });
       const { token: newToken, ...userData } = res.data.data;
       localStorage.setItem('token', newToken);
@@ -140,9 +125,7 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
-    // Try direct Spring Boot backend login first.
-    // Fail fast on backend outages instead of waiting for the full 30s Axios timeout
-    // before degrading to the Supabase fallback path.
+    setAuthError('');
     try {
       const res = await authApi.login({ email: email.trim(), password });
       const { token: newToken, ...userData } = res.data.data;
@@ -151,111 +134,32 @@ export function AuthProvider({ children }) {
       setUser(userData);
       return userData;
     } catch (backendError) {
-      console.warn('Backend login error:', backendError);
-
-      const backendMessage = backendError.response?.data?.message;
-      const isCredentialFailure = backendError.response?.status === 401 ||
-        backendError.response?.status === 403 ||
-        backendMessage?.toLowerCase().includes('invalid credentials') ||
-        backendMessage?.toLowerCase().includes('user not found') ||
-        backendMessage?.toLowerCase().includes('account not found');
-
-      if (!backendError.response || backendError.code === 'ERR_NETWORK') {
-        throw new Error('Authentication service is temporarily unavailable. Please try again in a moment.');
+      if (!backendError.response) {
+        const error = new Error("We couldn't connect to the authentication server. Please try again.");
+        setAuthError(error.message);
+        throw error;
       }
-
-      if (backendMessage && !isCredentialFailure) {
-        throw new Error(backendMessage);
-      }
-
-      if (!isCredentialFailure) {
-        throw new Error('Unable to sign in. Please try again.');
-      }
-    }
-
-    // Fallback to Supabase login / legacy verification
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (error) throw error;
-      return exchangeSession(data.session);
-    } catch (supabaseError) {
-      // If Supabase login fails, try verifying legacy account
-      console.warn('Supabase login failed, attempting legacy account verification:', supabaseError.message);
-      try {
-        const legacyResponse = await authApi.legacyLogin({
-          email: email.trim(),
-          password
-        });
-
-        const legacyData = legacyResponse.data.data;
-
-        // Legacy account found - now create Supabase account with same credentials
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: legacyData.email,
-          password,
-          options: {
-            data: { name: legacyData.name },
-            emailRedirectTo: `${window.location.origin}/dashboard`
-          }
-        });
-
-        if (signUpError) {
-          // If account already exists in Supabase, try signing in
-          if (signUpError.message?.includes('already registered')) {
-            const { data, error } = await supabase.auth.signInWithPassword({
-              email: legacyData.email,
-              password
-            });
-            if (error) throw error;
-            return exchangeSession(data.session);
-          }
-          throw signUpError;
-        }
-
-        // If signup was successful but no session yet, sign in immediately
-        if (signUpData.session) {
-          return exchangeSession(signUpData.session, legacyData.name);
-        }
-
-        // Account created but no auto session - sign in manually
-        console.log('Account created, signing in manually...');
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: legacyData.email,
-          password
-        });
-
-        if (signInError) {
-          // If still can't sign in, user needs to verify email
-          console.warn('Sign in after signup failed, user may need email verification');
-          throw new Error('Account created. Please check your email for verification link and try logging in again.');
-        }
-
-        if (!signInData.session) {
-          throw new Error('Account created but session could not be established. Please try logging in again.');
-        }
-
-        return exchangeSession(signInData.session, legacyData.name);
-      } catch (legacyError) {
-        // If legacy verification also fails, throw the original Supabase error
-        if (legacyError.response?.status === 404 || legacyError.message?.includes('not found')) {
-          throw new Error('Invalid credentials. Please check your email and password.');
-        }
-        throw legacyError;
-      }
+      const status = backendError.response.status;
+      const message = status === 401
+        ? 'Invalid email or password.'
+        : status === 400
+          ? 'Please check the information you entered.'
+          : backendError.response.data?.message || 'Unable to sign in. Please try again.';
+      setAuthError(message);
+      throw new Error(message);
     }
   };
 
   // Kept as a compatibility wrapper for existing registration consumers.
   const signUpWithVerification = async (name, email, password) => {
-    return register(name, email, password);
+    return register(email, password);
   };
 
-  const register = async (name, email, password) => {
-    // Register directly in local backend database
+  const register = async (email, password) => {
+    setAuthError('');
     try {
       const res = await authApi.register({
-        name: name.trim(),
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password
       });
       const { token: newToken, ...userData } = res.data.data;
@@ -264,11 +168,19 @@ export function AuthProvider({ children }) {
       setUser(userData);
       return userData;
     } catch (backendError) {
-      console.warn('Backend register error:', backendError);
-      if (backendError.response?.data?.message) {
-        throw new Error(backendError.response.data.message);
+      if (!backendError.response) {
+        const error = new Error("We couldn't connect to the authentication server. Please try again.");
+        setAuthError(error.message);
+        throw error;
       }
-      throw backendError;
+      const status = backendError.response.status;
+      const message = status === 409
+        ? 'An account with this email already exists.'
+        : status === 400
+          ? 'Please check the information you entered.'
+          : backendError.response.data?.message || 'Unable to create your account. Please try again.';
+      setAuthError(message);
+      throw new Error(message);
     }
   };
 
@@ -292,11 +204,24 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    setAuthError('');
     supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, signUpWithVerification, sendMagicLink, socialLogin, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      token,
+      loading,
+      authError,
+      authState: loading ? 'AUTHENTICATING' : user ? 'AUTHENTICATED' : authError ? 'AUTH_ERROR' : 'UNAUTHENTICATED',
+      login,
+      register,
+      signUpWithVerification,
+      sendMagicLink,
+      socialLogin,
+      logout
+    }}>
       {children}
     </AuthContext.Provider>
   );

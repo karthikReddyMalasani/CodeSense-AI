@@ -19,4 +19,7 @@ public class SocialLoginRequest {
 
     @NotBlank(message = "Name is required")
     private String name;
+
+    @NotBlank(message = "OAuth access token is required")
+    private String accessToken;
 }

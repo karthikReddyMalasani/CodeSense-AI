@@ -10,11 +10,11 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOriginPatterns(
+                .allowedOrigins(
                         "http://localhost:3000",
                         "http://localhost:3001",
                         "https://codesense-ai-ibm.vercel.app",
-                    "https://codesense-ai-frontend-gt2g.onrender.com"
+                        "https://codesense-ai-frontend-gt2g.onrender.com"
                 )
                 .allowedMethods(
                         "GET",

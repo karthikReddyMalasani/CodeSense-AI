@@ -6,6 +6,7 @@ import com.codesense.auth.model.User;
 import com.codesense.auth.repository.UserRepository;
 import com.codesense.auth.security.JwtService;
 import com.codesense.common.exception.BadRequestException;
+import com.codesense.common.exception.ConflictException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -18,6 +19,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
+import java.util.Set;
+
 @Slf4j
 @Service
 public class AuthService implements UserDetailsService {
@@ -26,28 +30,31 @@ public class AuthService implements UserDetailsService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final SupabaseIdentityService supabaseIdentityService;
 
     @Autowired
     public AuthService(UserRepository userRepository,
                        JwtService jwtService,
                        PasswordEncoder passwordEncoder,
-                       @Lazy AuthenticationManager authenticationManager) {
+                       @Lazy AuthenticationManager authenticationManager,
+                       SupabaseIdentityService supabaseIdentityService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
+        this.supabaseIdentityService = supabaseIdentityService;
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        String normalizedEmail = request.getEmail().toLowerCase();
+        String normalizedEmail = normalizeEmail(request.getEmail());
         if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new BadRequestException("Email is already registered: " + request.getEmail());
+            throw new ConflictException("An account with this email already exists.");
         }
 
         User user = User.builder()
-            .name(request.getName())
-            .email(request.getEmail().toLowerCase())
+            .name(defaultName(request.getName(), normalizedEmail))
+            .email(normalizedEmail)
             .password(passwordEncoder.encode(request.getPassword()))
             .role(Role.USER)
             .build();
@@ -60,12 +67,13 @@ public class AuthService implements UserDetailsService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        String normalizedEmail = normalizeEmail(request.getEmail());
         authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.getEmail().toLowerCase(), request.getPassword())
+            new UsernamePasswordAuthenticationToken(normalizedEmail, request.getPassword())
         );
 
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        User user = userRepository.findByEmail(normalizedEmail)
+            .orElseThrow(() -> new UsernameNotFoundException("Invalid email or password."));
 
         String token = jwtService.generateToken(user);
         log.info("User logged in: {}", user.getEmail());
@@ -74,7 +82,11 @@ public class AuthService implements UserDetailsService {
 
     @Transactional
     public AuthResponse socialLogin(SocialLoginRequest request) {
-        String normalizedEmail = request.getEmail().toLowerCase();
+        if (!Set.of("google", "github").contains(request.getProvider().toLowerCase(Locale.ROOT))) {
+            throw new BadRequestException("Unsupported social sign-in provider.");
+        }
+        String verifiedEmail = supabaseIdentityService.verifyAccessToken(request.getAccessToken());
+        String normalizedEmail = normalizeEmail(verifiedEmail);
         User user = userRepository.findByEmail(normalizedEmail)
             .orElseGet(() -> {
                 log.info("Creating new user via social login ({}) for email: {}", request.getProvider(), normalizedEmail);
@@ -134,8 +146,8 @@ public class AuthService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmail(email)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+        return userRepository.findByEmail(normalizeEmail(email))
+            .orElseThrow(() -> new UsernameNotFoundException("Invalid email or password."));
     }
 
     private AuthResponse buildAuthResponse(String token, User user) {
@@ -147,5 +159,14 @@ public class AuthService implements UserDetailsService {
             .email(user.getEmail())
             .role(user.getRole().name())
             .build();
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String defaultName(String name, String email) {
+        if (name != null && !name.isBlank()) return name.trim();
+        return email.substring(0, email.indexOf('@'));
     }
 }

@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:8080' : 'https://codesense-ai-tuo7.onrender.com');
 
 export const api = axios.create({
   baseURL: BASE_URL,
@@ -43,7 +44,7 @@ api.interceptors.response.use(
 // Auth API
 export const authApi = {
   login: (data) => api.post('/api/auth/login', data, { timeout: 10000 }),
-  register: (data) => api.post('/api/auth/register', data, { timeout: 10000 }),
+  register: (data) => api.post('/api/auth/signup', data, { timeout: 10000 }),
   socialLogin: (data) => api.post('/api/auth/social-login', data, { timeout: 10000 }),
   legacyLogin: (data) => api.post('/api/auth/legacy-login', data, { timeout: 10000 }),
   getMe: () => api.get('/api/auth/me', { timeout: 10000 })

@@ -6,13 +6,14 @@ import com.codesense.auth.model.User;
 import com.codesense.auth.repository.UserRepository;
 import com.codesense.auth.security.JwtService;
 import com.codesense.auth.service.AuthService;
-import com.codesense.common.exception.BadRequestException;
+import com.codesense.common.exception.ConflictException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
@@ -34,7 +35,6 @@ class AuthServiceTest {
     @Test
     void register_success() {
         RegisterRequest req = new RegisterRequest();
-        req.setName("Test User");
         req.setEmail("test@example.com");
         req.setPassword("password123");
 
@@ -59,8 +59,8 @@ class AuthServiceTest {
         when(userRepository.existsByEmail("existing@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(req))
-            .isInstanceOf(BadRequestException.class)
-            .hasMessageContaining("already registered");
+            .isInstanceOf(ConflictException.class)
+            .hasMessage("An account with this email already exists.");
     }
 
     @Test
@@ -80,5 +80,37 @@ class AuthServiceTest {
 
         var response = authService.login(req);
         assertThat(response.getToken()).isNotBlank();
+    }
+
+    @Test
+    void register_withoutName_usesEmailPrefixAndHashesPassword() {
+        RegisterRequest req = new RegisterRequest();
+        req.setEmail(" User@Example.com ");
+        req.setPassword("password123");
+
+        when(passwordEncoder.encode("password123")).thenReturn("$2a$hashed");
+        when(jwtService.generateToken(any())).thenReturn("token");
+        when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var response = authService.register(req);
+
+        assertThat(response.getEmail()).isEqualTo("user@example.com");
+        verify(passwordEncoder).encode("password123");
+        verify(userRepository).save(argThat(user ->
+            user.getName().equals("user") && user.getPassword().equals("$2a$hashed")));
+    }
+
+    @Test
+    void login_invalidCredentialsPropagatesAuthenticationFailure() {
+        LoginRequest req = new LoginRequest();
+        req.setEmail("user@example.com");
+        req.setPassword("wrong");
+        doThrow(new BadCredentialsException("bad credentials"))
+            .when(authenticationManager).authenticate(any());
+
+        assertThatThrownBy(() -> authService.login(req))
+            .isInstanceOf(BadCredentialsException.class);
+        verifyNoInteractions(jwtService);
     }
 }

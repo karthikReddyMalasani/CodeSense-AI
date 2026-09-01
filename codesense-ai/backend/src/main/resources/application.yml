@@ -69,6 +69,11 @@ jwt:
   secret: ${JWT_SECRET:please-change-this-secret-key-in-production-it-must-be-at-least-64-characters-long}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
+# ─── Supabase OAuth identity verification ────────────────────────────────────
+supabase:
+  url: ${SUPABASE_URL:}
+  anon-key: ${SUPABASE_ANON_KEY:}
+
 # ─── Google Gemini ───────────────────────────────────────────────────────────
 gemini:
   api-key: ${GEMINI_API_KEY:}
