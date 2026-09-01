@@ -265,7 +265,8 @@ export default function LoginPage() {
                 </a>
               </div>
 
-              <button
+              {/* Email verification link option disabled - users should use email+password or social login */}
+              {/* <button
                 type="button"
                 className="cs-btn-social"
                 onClick={handleEmailVerification}
@@ -273,7 +274,7 @@ export default function LoginPage() {
               >
                 <Mail size={18} />
                 Email me a verification link
-              </button>
+              </button> */}
 
               {/* Submit Button */}
               <button
