@@ -26,17 +26,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      const token = localStorage.getItem('token');
-      // Only auto-redirect if a token was present (authenticated session gone bad)
-      if (token) {
+    const status = error.response?.status;
+    const requestUrl = error.config?.url || '';
+    const isAuthRequest = requestUrl.includes('/api/auth/');
+    const token = localStorage.getItem('token');
+
+    if ((status === 401 || status === 403) && token && !isAuthRequest) {
+      const isPublicRoute = window.location.pathname.includes('/login') || window.location.pathname.includes('/register');
+      if (!isPublicRoute) {
         localStorage.removeItem('token');
-        // Avoid redirect loop on the login page itself
-        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
-          window.location.href = '/login';
-        }
       }
     }
+
     return Promise.reject(error);
   }
 );

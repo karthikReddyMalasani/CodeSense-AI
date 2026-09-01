@@ -3,15 +3,19 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export default function PrivateRoute() {
-  const { token, loading } = useAuth();
+  const { token, authState } = useAuth();
   const location = useLocation();
   const hasOAuthSuccessCallback = window.location.hash.includes('access_token=') ||
     window.location.hash.includes('code=') ||
     window.location.search.includes('code=');
 
-  if (loading) return <div className="loading-center"><div className="spinner" /></div>;
+  const isAuthPending = authState === 'AUTH_INITIALIZING' || authState === 'AUTHENTICATING';
 
-  if (!token) {
+  if (isAuthPending) {
+    return <div className="loading-center"><div className="spinner" /></div>;
+  }
+
+  if (!token || authState === 'UNAUTHENTICATED' || authState === 'AUTH_ERROR') {
     if (hasOAuthSuccessCallback) {
       return <div className="loading-center"><div className="spinner" /></div>;
     }

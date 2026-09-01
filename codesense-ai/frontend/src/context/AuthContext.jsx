@@ -4,16 +4,36 @@ import { authApi } from '../services/api';
 import { supabase } from '../services/supabase';
 
 const AuthContext = createContext(null);
+const AUTH_STATES = {
+  INITIALIZING: 'AUTH_INITIALIZING',
+  AUTHENTICATING: 'AUTHENTICATING',
+  AUTHENTICATED: 'AUTHENTICATED',
+  UNAUTHENTICATED: 'UNAUTHENTICATED',
+  AUTH_ERROR: 'AUTH_ERROR'
+};
+
+const devLog = (...args) => {
+  if (import.meta.env.DEV) {
+    console.debug('[AUTH]', ...args);
+  }
+};
 
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
   const exchangeInProgress = useRef(false);
+  const initializedRef = useRef(false);
+
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState(AUTH_STATES.INITIALIZING);
   const [authError, setAuthError] = useState('');
 
+  const loading = authState === AUTH_STATES.INITIALIZING || authState === AUTH_STATES.AUTHENTICATING;
+
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     let mounted = true;
 
     const isOAuthSuccessCallback = typeof window !== 'undefined' &&
@@ -25,58 +45,83 @@ export function AuthProvider({ children }) {
       (window.location.hash.includes('error=') ||
         window.location.search.includes('error='));
 
-    const loadProfile = async () => {
-      if (!token && isOAuthSuccessCallback && !isOAuthErrorCallback) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session?.user) throw new Error('OAuth callback did not include a user session.');
-          await exchangeSession(session);
-          if (mounted) navigate('/dashboard', { replace: true });
-        } catch (error) {
-          if (mounted) setLoading(false);
-          console.error('Unable to create the CodeSense session:', error);
-        }
+    const restoreSession = async () => {
+      const storedToken = localStorage.getItem('token');
+      devLog('auth:init:start', { hasStoredToken: Boolean(storedToken) });
+
+      if (!storedToken) {
+        if (mounted) setAuthState(AUTH_STATES.UNAUTHENTICATED);
         return;
       }
-      if (!token) {
-        if (mounted) {
-          setLoading(false);
-        }
-        return;
-      }
+
       try {
         const res = await authApi.getMe();
-        if (mounted) setUser(res.data.data);
-      } catch {
+        if (mounted) {
+          setUser(res.data?.data || null);
+          setToken(storedToken);
+          setAuthState(AUTH_STATES.AUTHENTICATED);
+          devLog('auth:init:authenticated');
+        }
+      } catch (error) {
         localStorage.removeItem('token');
         if (mounted) {
           setToken(null);
           setUser(null);
+          setAuthState(AUTH_STATES.UNAUTHENTICATED);
+          devLog('auth:init:clear-token');
         }
-      } finally {
-        if (mounted) setLoading(false);
       }
     };
 
-    loadProfile();
+    if (!token && isOAuthSuccessCallback && !isOAuthErrorCallback) {
+      supabase.auth.getSession()
+        .then(({ data: { session } }) => {
+          if (!session?.user) throw new Error('OAuth callback did not include a user session.');
+          return exchangeSession(session);
+        })
+        .then(() => {
+          if (mounted) {
+            setAuthState(AUTH_STATES.AUTHENTICATED);
+            navigate('/dashboard', { replace: true });
+          }
+        })
+        .catch((error) => {
+          if (mounted) {
+            setAuthState(AUTH_STATES.UNAUTHENTICATED);
+          }
+          console.error('Unable to create the CodeSense session:', error);
+        });
+      return () => {
+        mounted = false;
+      };
+    }
+
+    restoreSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' && mounted) {
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
+        setAuthState(AUTH_STATES.UNAUTHENTICATED);
+        devLog('auth:supabase:sign-out');
       }
+
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user && !localStorage.getItem('token')) {
-        setLoading(true);
-        exchangeSession(session).then(() => {
-          if (mounted) {
-            setLoading(false);
-            navigate('/dashboard', { replace: true });
-          }
-        }).catch((error) => {
-          if (mounted) setLoading(false);
-          console.error('Unable to create the CodeSense session:', error);
-        });
+        setAuthState(AUTH_STATES.AUTHENTICATING);
+        exchangeSession(session)
+          .then(() => {
+            if (mounted) {
+              setAuthState(AUTH_STATES.AUTHENTICATED);
+              navigate('/dashboard', { replace: true });
+            }
+          })
+          .catch((error) => {
+            if (mounted) {
+              setAuthState(AUTH_STATES.UNAUTHENTICATED);
+            }
+            console.error('Unable to create the CodeSense session:', error);
+          });
       }
     });
 
@@ -84,9 +129,16 @@ export function AuthProvider({ children }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [token, navigate]);
+  }, [navigate, token]);
 
-  // Supabase verifies credentials; the exchange returns the app API token.
+  const applyAuthenticatedSession = (newToken, nextUser) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    setUser(nextUser);
+    setAuthState(AUTH_STATES.AUTHENTICATED);
+    devLog('auth:session:applied');
+  };
+
   const exchangeSession = async (session, name, requireVerifiedEmail = false) => {
     if (exchangeInProgress.current) return user;
     if (!session?.user?.email) throw new Error('Supabase did not return an email for this account.');
@@ -115,9 +167,7 @@ export function AuthProvider({ children }) {
         accessToken: session.access_token
       });
       const { token: newToken, ...userData } = res.data.data;
-      localStorage.setItem('token', newToken);
-      setToken(newToken);
-      setUser(userData);
+      applyAuthenticatedSession(newToken, userData);
       return userData;
     } finally {
       exchangeInProgress.current = false;
@@ -126,14 +176,16 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     setAuthError('');
+    setAuthState(AUTH_STATES.AUTHENTICATING);
+    devLog('auth:login:start');
     try {
       const res = await authApi.login({ email: email.trim(), password });
       const { token: newToken, ...userData } = res.data.data;
-      localStorage.setItem('token', newToken);
-      setToken(newToken);
-      setUser(userData);
+      applyAuthenticatedSession(newToken, userData);
+      devLog('auth:login:success');
       return userData;
     } catch (backendError) {
+      setAuthState(AUTH_STATES.UNAUTHENTICATED);
       if (!backendError.response) {
         const error = new Error("We couldn't connect to the authentication server. Please try again.");
         setAuthError(error.message);
@@ -150,24 +202,25 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Kept as a compatibility wrapper for existing registration consumers.
   const signUpWithVerification = async (name, email, password) => {
     return register(email, password);
   };
 
   const register = async (email, password) => {
     setAuthError('');
+    setAuthState(AUTH_STATES.AUTHENTICATING);
+    devLog('auth:register:start');
     try {
       const res = await authApi.register({
         email: email.trim().toLowerCase(),
         password
       });
       const { token: newToken, ...userData } = res.data.data;
-      localStorage.setItem('token', newToken);
-      setToken(newToken);
-      setUser(userData);
+      applyAuthenticatedSession(newToken, userData);
+      devLog('auth:register:success');
       return userData;
     } catch (backendError) {
+      setAuthState(AUTH_STATES.UNAUTHENTICATED);
       if (!backendError.response) {
         const error = new Error("We couldn't connect to the authentication server. Please try again.");
         setAuthError(error.message);
@@ -200,12 +253,18 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   };
 
-  const logout = () => {
+  const logout = async () => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
     setAuthError('');
-    supabase.auth.signOut();
+    setAuthState(AUTH_STATES.UNAUTHENTICATED);
+    devLog('auth:logout');
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.warn('Supabase signOut failed during logout.', error);
+    }
   };
 
   return (
@@ -214,7 +273,7 @@ export function AuthProvider({ children }) {
       token,
       loading,
       authError,
-      authState: loading ? 'AUTHENTICATING' : user ? 'AUTHENTICATED' : authError ? 'AUTH_ERROR' : 'UNAUTHENTICATED',
+      authState,
       login,
       register,
       signUpWithVerification,
